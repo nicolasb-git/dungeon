@@ -1,0 +1,8 @@
+{
+  "name": "browser-mud",
+  "version": "1.0.0",
+  "description": "A local browser-based graphical MUD",
+  "scripts": {
+    "start": "npx serve ."
+  }
+}

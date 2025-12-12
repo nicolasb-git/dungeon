@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadows of the Dungeon</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Outfit:wght@300;400;600&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Shadows of the Dungeon</h1>
+            <div class="subtitle">A Local Browser MUD</div>
+        </header>
+
+        <main class="game-interface">
+            <div class="sidebar left-panel">
+                <div class="panel-block stats-block">
+                    <h2>Hero Stats</h2>
+                    <div class="stat-row">
+                        <span class="stat-label">Class</span>
+                        <span class="stat-value highlight">Warrior</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Level</span>
+                        <span class="stat-value highlight" id="stat-level-val">1</span>
+                    </div>
+                    <div class="stat-bar-container">
+                        <div class="stat-info">
+                            <span class="icon">❤️</span> Life
+                            <span id="stat-life-val">100/100</span>
+                        </div>
+                        <div class="progress-bar flat-red">
+                            <div id="bar-life" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                    <div class="stat-bar-container">
+                        <div class="stat-info">
+                            <span class="icon">🍖</span> Hunger
+                            <span id="stat-hunger-val">100/100</span>
+                        </div>
+                        <div class="progress-bar flat-orange">
+                            <div id="bar-hunger" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                    <div class="stat-bar-container">
+                        <div class="stat-info">
+                            <span class="icon">✨</span> XP
+                            <span id="stat-xp-val">0/50</span>
+                        </div>
+                        <div class="progress-bar flat-blue">
+                            <div id="bar-xp" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="stat-bar-container">
+                        <div class="stat-info">
+                            <span class="icon">⚔️</span> Power
+                            <span id="stat-power-val">10</span>
+                        </div>
+                        <!-- Power might not be a bar, but just a number, keeping consistent style -->
+                        <div class="stat-value-large" id="val-power">10</div>
+                    </div>
+                </div>
+
+                <div class="panel-block controls-hint">
+                    <h3>Controls</h3>
+                    <p>Arrow Keys to Move</p>
+                    <p>Walk into monsters to Attack</p>
+                </div>
+
+                <div class="panel-block reset-block">
+                    <button id="reset-btn" class="danger-btn">Reset Game</button>
+                </div>
+            </div>
+
+            <div class="viewport-container">
+                <div id="game-grid" class="game-grid">
+                    <!-- Grid will be generated here -->
+                </div>
+                <div class="overlay" id="message-overlay" style="display: none;">
+                    <div class="modal">
+                        <h2 id="modal-title">Game Over</h2>
+                        <p id="modal-msg">You have perished.</p>
+                        <button id="modal-restart">Try Again</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar right-panel">
+                <div class="panel-block log-block">
+                    <h2>Adventure Log</h2>
+                    <div id="game-log" class="log-container">
+                        <div class="log-entry">Welcome to the dungeon, Warrior.</div>
+                    </div>
+                </div>
+                <div class="panel-block inventory-block">
+                    <h2>Backpack</h2>
+                    <ul id="inventory-list">
+                        <li class="empty-slot">Empty</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>

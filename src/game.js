@@ -1,0 +1,489 @@
+import { GameMap, TILE_WALL } from './map.js';
+import { Player, Monster, Item } from './entities.js';
+import { UI } from './ui.js';
+
+export class Game {
+    constructor() {
+        this.ui = new UI();
+        this.storageKey = 'mud_save_v2'; // Force reset to clear "Fully Revealed" debug state
+        this.loadGame();
+
+        // Bind Inputs
+        document.addEventListener('keydown', (e) => this.handleInput(e));
+        document.getElementById('reset-btn').addEventListener('click', () => this.resetGame());
+    }
+
+    resetGame() {
+        localStorage.removeItem(this.storageKey);
+        location.reload();
+    }
+
+    start() {
+        this.ui.initGrid(this.map.width, this.map.height);
+        this.render();
+        if (!this.player.isAlive()) {
+            this.ui.showGameOver("You are dead.", () => this.resetGame());
+        }
+    }
+
+    // ---------------- SAVE / LOAD ---------------- //
+
+    saveGame() {
+        const state = {
+            player: {
+                x: this.player.x,
+                y: this.player.y,
+                life: this.player.life,
+                hunger: this.player.hunger,
+                power: this.player.power,
+                inventory: this.player.inventory,
+                xp: this.player.xp,
+                level: this.player.level,
+                nextLevelXp: this.player.nextLevelXp,
+                maxLife: this.player.maxLife
+            },
+            map: {
+                width: this.map.width,
+                height: this.map.height,
+                grid: this.map.grid,
+                rooms: this.map.rooms,
+                explored: this.map.explored,
+                entities: this.map.entities
+            },
+            depth: this.depth
+        };
+        localStorage.setItem(this.storageKey, JSON.stringify(state));
+    }
+
+    loadGame() {
+        const saved = localStorage.getItem(this.storageKey);
+
+        if (saved) {
+            try {
+                const state = JSON.parse(saved);
+
+                // Validation: If save lacks map data (old version), force reset
+                if (!state.map || !state.map.grid) {
+                    console.log("Old save format detected. Resetting.");
+                    this.initNewGame();
+                    return;
+                }
+
+                // Restore Map
+                this.map = new GameMap();
+                this.map.width = state.map.width;
+                this.map.height = state.map.height;
+                this.map.grid = state.map.grid;
+                this.map.rooms = state.map.rooms || [];
+                this.map.explored = state.map.explored;
+
+                // Rehydrate Entities
+                this.map.entities = state.map.entities.map(e => {
+                    if (e.type === 'monster') {
+                        const m = new Monster(e.x, e.y, e.monsterType || 'skeleton'); // fallback
+                        m.life = e.life;
+                        m.id = e.id;
+                        return m;
+                    } else if (e.type === 'item') {
+                        const i = new Item(e.x, e.y, e.itemType);
+                        i.value = e.value;
+                        i.id = e.id;
+                        return i;
+                    }
+                    return null;
+                }).filter(e => e !== null);
+
+
+                // Rehydrate Player
+                this.player = new Player(state.player.x, state.player.y);
+                this.player.life = state.player.life;
+                this.player.hunger = state.player.hunger;
+                this.player.power = state.player.power;
+                this.player.inventory = state.player.inventory;
+                this.player.xp = state.player.xp || 0;
+                this.player.level = state.player.level || 1;
+                this.player.nextLevelXp = state.player.nextLevelXp || 50;
+                if (state.player.maxLife) this.player.maxLife = state.player.maxLife;
+
+                this.depth = state.depth || 1;
+
+                this.ui.log("Game Loaded.", "info");
+
+            } catch (err) {
+                console.error("Save file corrupted, starting new.", err);
+                this.initNewGame();
+            }
+        } else {
+            this.initNewGame();
+        }
+    }
+
+    initNewGame() {
+        this.depth = 1;
+        // Create player briefly so we have the object, but coordinates will be set by setupLevel
+        this.player = new Player(0, 0);
+        this.setupLevel();
+        this.ui.log("New Game Started.", "good");
+        this.saveGame();
+    }
+
+    nextLevel() {
+        this.depth++;
+        this.ui.log(`You descend to level ${this.depth}...`, "good");
+        this.player.heal(10);
+
+        this.setupLevel();
+        this.saveGame();
+        this.render();
+    }
+
+    setupLevel() {
+        // Dynamic Map Size based on Viewport
+        // Measure the container directly!
+        const viewport = document.querySelector('.viewport-container');
+        let availW = window.innerWidth - 320; // Fallback
+        let availH = window.innerHeight - 50;
+
+        if (viewport) {
+            availW = viewport.clientWidth;
+            availH = viewport.clientHeight;
+        }
+
+        // Compute tiles based on ~32px sizing
+        // We floor it to ensure it fits
+        let cols = Math.floor(availW / 32);
+        let rows = Math.floor(availH / 32);
+
+        // Ensure minimum playability, but NO MAX limit (fill the screen!)
+        cols = Math.max(20, cols);
+        rows = Math.max(15, rows);
+
+        // Pad slightly to avoid edge gluing
+        cols -= 2;
+        rows -= 2;
+
+        this.map = new GameMap(cols, rows);
+
+        const rooms = this.map.rooms;
+
+        if (!rooms || rooms.length === 0) return;
+
+        const startPos = this.map.getCenter(rooms[0]);
+        this.player.x = startPos.x;
+        this.player.y = startPos.y;
+
+        // 2. Stairs spawn in the last room center
+        const endPos = this.map.getCenter(rooms[rooms.length - 1]);
+        this.map.addEntity(new Item(endPos.x, endPos.y, 'exit'));
+
+        // 3. Spawn Monsters & Items in other rooms
+        // Skip first room for monsters to give player a safe start
+        for (let i = 1; i < rooms.length; i++) {
+            const room = rooms[i];
+            const center = this.map.getCenter(room);
+
+            // Chance for Monster
+            // DEBUG: 100% chance
+            // Chance for Monster
+            // DEBUG: 100% chance
+            if (Math.random() < 1.0) {
+                // Rarity:
+                // Spider: 50%
+                // Skeleton: 40%
+                // Deamon: 10%
+                const roll = Math.random();
+                let type = 'spider';
+                if (roll < 0.1) type = 'deamon';
+                else if (roll < 0.5) type = 'skeleton';
+
+                // Offset slightly so it's not always dead center if stairs are there
+                // Actually stairs are only in last room.
+                // But let's add randomness inside the room
+                const rx = Math.floor(Math.random() * room.w) + room.x;
+                const ry = Math.floor(Math.random() * room.h) + room.y;
+
+                if (!this.map.isWall(rx, ry) && !this.map.getEntityAt(rx, ry)) {
+                    this.map.addEntity(new Monster(rx, ry, type, this.depth));
+                }
+            }
+
+            // Chance for Treasure
+            // DEBUG: 100% chance
+            if (Math.random() < 1.0) {
+                const rx = Math.floor(Math.random() * room.w) + room.x;
+                const ry = Math.floor(Math.random() * room.h) + room.y;
+                if (!this.map.isWall(rx, ry) && !this.map.getEntityAt(rx, ry)) {
+                    this.map.addEntity(new Item(rx, ry, 'treasure'));
+                }
+            }
+        }
+    }
+
+    // ---------------- LOGIC ---------------- //
+
+    handleInput(e) {
+        if (!this.player.isAlive()) return;
+
+        let dx = 0;
+        let dy = 0;
+
+        switch (e.key) {
+            case 'ArrowUp': dy = -1; break;
+            case 'ArrowDown': dy = 1; break;
+            case 'ArrowLeft': dx = -1; break;
+            case 'ArrowRight': dx = 1; break;
+            default: return; // Ignore other keys
+        }
+
+        e.preventDefault();
+        this.movePlayer(dx, dy);
+    }
+
+    movePlayer(dx, dy) {
+        const newX = this.player.x + dx;
+        const newY = this.player.y + dy;
+
+        // 1. Check Bounds & Walls
+        if (this.map.isWall(newX, newY)) {
+            this.ui.log("Blocked by a wall.", "info");
+            return;
+        }
+
+        // 2. Check Entities
+        const target = this.map.getEntityAt(newX, newY);
+
+        if (target) {
+            if (target.type === 'monster') {
+                this.combatRound(target);
+                // Combat takes movement point? Yes usually.
+                // But hunger? Let's say yes.
+                this.processHunger();
+                this.render();
+                return; // Don't move into monster
+            } else if (target.type === 'item') {
+                if (target.itemType === 'exit') {
+                    this.nextLevel();
+                    return;
+                }
+                this.collectItem(target);
+                // Move into item tile
+            }
+        }
+
+        // 3. Move
+        this.player.x = newX;
+        this.player.y = newY;
+
+        // Tick Buffs
+        if (this.player.tickBuffs()) {
+            this.ui.log("Your invulnerability has faded.", "info");
+        }
+
+        this.processHunger();
+
+        this.render();
+        this.saveGame();
+    }
+
+    combatRound(monster) {
+        // Player hits Monster
+        const pDmg = this.player.power;
+        monster.takeDamage(pDmg);
+        this.ui.log(`You hit the ${monster.name} for ${pDmg} damage!`, "combat");
+
+        if (!monster.isAlive()) {
+            this.ui.log(`The ${monster.name} dies!`, "good");
+            // Fix: User requested (0.2 * initial life). Current life is 0. Use maxLife.
+            const xpGain = Math.floor(monster.power + (0.20 * monster.maxLife));
+
+            this.ui.log(`Gained ${xpGain} XP.`, "good");
+
+            const oldLevel = this.player.level;
+            this.player.gainXp(xpGain);
+            if (this.player.level > oldLevel) {
+                this.ui.log(`LEVEL UP! You are now level ${this.player.level}!`, "loot");
+                // DEBUG LOG
+                this.ui.log(`DEBUG: Your Power increased to ${this.player.power}!`, "info");
+            }
+
+            // Monster Drop (100% chance for debug)
+            if (Math.random() < 1.0) {
+                let drop;
+                if (monster.monsterType === 'deamon') {
+                    drop = new Item(0, 0, 'gem'); // Deamon always drops Gem
+                } else {
+                    drop = this.generateLoot();
+                }
+
+                console.log("DEBUG: Monster dropped loot:", drop);
+                this.ui.log(`The monster dropped a ${drop.name || 'loot'}!`, "loot");
+                this.player.addToInventory(drop);
+            }
+
+            this.map.removeEntity(monster);
+        } else {
+            // Monster hits Player
+            if (this.player.isInvulnerable()) {
+                this.ui.log(`The ${monster.name} attacks, but you are INVULNERABLE!`, "combat");
+            } else {
+                const mDmg = monster.power;
+                this.player.takeDamage(mDmg);
+                this.ui.log(`The ${monster.name} hits you back for ${mDmg} damage.`, "combat");
+
+                if (!this.player.isAlive()) {
+                    this.death();
+                }
+            }
+        }
+    }
+
+    collectItem(item) {
+        if (item.itemType === 'treasure') {
+            this.map.removeEntity(item);
+
+            // Treasure always drops something
+            const drops = [];
+            // 1-2 items
+            const count = Math.random() > 0.5 ? 2 : 1;
+            for (let i = 0; i < count; i++) {
+                drops.push(this.generateLoot());
+            }
+
+            drops.forEach(drop => {
+                let msg = "";
+                if (drop.itemType === 'gold') {
+                    msg = `You found ${drop.value} gold!`;
+                } else {
+                    msg = `You found a ${drop.name}!`;
+                }
+                this.ui.log(msg, "loot");
+                this.player.addToInventory(drop);
+            });
+        }
+    }
+
+    generateLoot() {
+        const roll = Math.random();
+        if (roll < 0.4) {
+            return this.createGoldDrop();
+        } else if (roll < 0.7) {
+            return new Item(0, 0, 'food');
+        } else {
+            return new Item(0, 0, 'potion');
+        }
+    }
+
+    createGoldDrop() {
+        const gold = new Item(0, 0, 'gold');
+        gold.value = Math.floor(Math.random() * 50) + 10;
+        return gold;
+    }
+
+    processHunger() {
+        if (this.player.isInvulnerable()) return; // No hunger loss while invulnerable
+
+        this.player.decreaseHunger(1);
+        if (this.player.hunger <= 0) {
+            this.ui.log("Starvation is taking its toll...", "combat");
+            this.player.takeDamage(5);
+            if (!this.player.isAlive()) this.death("You starved to death.");
+        }
+    }
+
+    death(cause) {
+        this.ui.log("You have died.", "combat");
+        this.render();
+        this.saveGame(); // Save death state
+        this.ui.showGameOver(cause || "You were slain in the dungeon.", () => this.resetGame());
+    }
+
+    useItem(item) {
+        if (item.itemType === 'food') {
+            this.ui.log(`You ate a ${item.name} and recovered ${item.value} hunger.`, "good");
+            this.player.eat(item.value);
+            item.quantity--;
+            if (item.quantity <= 0) {
+                this.player.inventory = this.player.inventory.filter(i => i !== item);
+            }
+            this.render();
+            this.saveGame();
+        } else if (item.itemType === 'potion') {
+            this.ui.log(`You drank a ${item.name} and recovered ${item.value} life.`, "good");
+            this.player.heal(item.value);
+            item.quantity--;
+            if (item.quantity <= 0) {
+                this.player.inventory = this.player.inventory.filter(i => i !== item);
+            }
+            this.render();
+            this.render();
+            this.saveGame();
+        } else if (item.itemType === 'gem') {
+            this.ui.log(`You used the ${item.name} and feel INVINCIBLE!`, "good");
+            this.player.addInvulnerability(item.value);
+            item.quantity--;
+            if (item.quantity <= 0) {
+                this.player.inventory = this.player.inventory.filter(i => i !== item);
+            }
+            this.render();
+            this.saveGame();
+        }
+    }
+
+    render() {
+        const fov = this.computeFOV(this.player.x, this.player.y, 3); // Radius 3
+        this.ui.drawMap(this.map, this.player, fov);
+        this.ui.updateStats(this.player, this.depth);
+        this.ui.updateInventory(this.player.inventory, (item) => this.useItem(item));
+    }
+
+    computeFOV(x, y, radius) {
+        const visibleTiles = new Set();
+
+        // Naive Shadowcasting / Raycasting for small radius
+        // We just iterate all distinct cells in square of radius
+        // And cast a ray from center to them.
+        for (let ry = -radius; ry <= radius; ry++) {
+            for (let rx = -radius; rx <= radius; rx++) {
+                // If within distance
+                if (rx * rx + ry * ry <= radius * radius + 2) { // +2 assumes slight circle smoothing
+                    const targetX = x + rx;
+                    const targetY = y + ry;
+
+                    // Raycast line
+                    const line = this.getLine(x, y, targetX, targetY);
+
+                    for (let point of line) {
+                        visibleTiles.add(`${point.x},${point.y}`);
+                        this.map.setExplored(point.x, point.y);
+
+                        // If wall, stop *after* adding the wall (you satisfy "blocked by walls")
+                        // so you see the wall face, but nothing behind it.
+                        if (this.map.isWall(point.x, point.y)) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return visibleTiles;
+    }
+
+    // Bresenham's Line Algorithm
+    getLine(x0, y0, x1, y1) {
+        let points = [];
+        let dx = Math.abs(x1 - x0);
+        let dy = Math.abs(y1 - y0);
+        let sx = (x0 < x1) ? 1 : -1;
+        let sy = (y0 < y1) ? 1 : -1;
+        let err = dx - dy;
+
+        while (true) {
+            points.push({ x: x0, y: y0 });
+            if ((x0 === x1) && (y0 === y1)) break;
+            let e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; x0 += sx; }
+            if (e2 < dx) { err += dx; y0 += sy; }
+        }
+        return points;
+    }
+}

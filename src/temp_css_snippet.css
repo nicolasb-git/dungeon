@@ -1,0 +1,20 @@
+.entity-player.invulnerable {
+    animation: pulse-blue 1s infinite;
+    box-shadow: 0 0 10px 2px #00ffff;
+    /* Blue Glow */
+    background-color: rgba(0, 255, 255, 0.3);
+}
+
+@keyframes pulse-blue {
+    0% {
+        box-shadow: 0 0 10px 2px #00ffff;
+    }
+
+    50% {
+        box-shadow: 0 0 20px 5px #00ffff;
+    }
+
+    100% {
+        box-shadow: 0 0 10px 2px #00ffff;
+    }
+}
