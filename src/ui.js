@@ -204,12 +204,13 @@ export class UI {
                 text = `<span>${item.symbol} ${item.name}</span> <span class="highlight">${item.value}</span>`;
             } else {
                 text = `<span>${item.symbol} ${item.name} (x${item.quantity})</span>`;
-                if (item.itemType === 'food' || item.itemType === 'potion' || item.itemType === 'gem') {
+                if (item.itemType === 'food' || item.itemType === 'potion' || item.itemType === 'gem' || item.itemType === 'equipment') {
                     // Create consumption button
                     const btn = document.createElement('button');
                     let btnText = "Use";
                     if (item.itemType === 'food') btnText = "Eat";
                     if (item.itemType === 'potion') btnText = "Drink";
+                    if (item.itemType === 'equipment') btnText = "Equip";
 
                     btn.textContent = btnText;
                     btn.className = "action-btn";
@@ -237,5 +238,36 @@ export class UI {
             this.messageOverlay.style.display = 'none';
             onRestart();
         };
+    }
+
+    updateEquipment(player) {
+        // Loop through all slots in the HTML
+        const slots = document.querySelectorAll('.equip-slot[data-slot]');
+        slots.forEach(slot => {
+            const key = slot.dataset.slot;
+            const item = player.equipment[key];
+
+            slot.innerHTML = ''; // Clear previous
+
+            if (item) {
+                slot.textContent = item.symbol;
+                slot.title = `${item.name} (${key}) +${item.value} Power`;
+                slot.classList.add('equipped');
+
+                // Badge for power
+                if (item.value) {
+                    const badge = document.createElement('span');
+                    badge.className = 'equip-badge';
+                    badge.textContent = `+${item.value}`;
+                    slot.appendChild(badge);
+                }
+            } else {
+                slot.textContent = '';
+                // Optional: Set default icon based on key?
+                // For now leave empty
+                slot.title = key; // Reset title
+                slot.classList.remove('equipped');
+            }
+        });
     }
 }

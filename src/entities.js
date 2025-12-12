@@ -14,7 +14,21 @@ export class Actor extends Entity {
         this.name = name;
         this.maxLife = life;
         this.life = life;
-        this.power = power;
+        this.basePower = power;
+    }
+
+    get power() {
+        let bonus = 0;
+        if (this.equipment) {
+            Object.values(this.equipment).forEach(item => {
+                if (item && item.value) bonus += item.value;
+            });
+        }
+        return this.basePower + bonus;
+    }
+
+    set power(val) {
+        this.basePower = val; // For compatibility/simple setting
     }
 
     isAlive() {
@@ -40,7 +54,24 @@ export class Player extends Actor {
         this.inventory = [];
         this.xp = 0;
         this.level = 1;
+        this.xp = 0;
+        this.level = 1;
         this.nextLevelXp = 50;
+
+        // Equipment Slots
+        this.equipment = {
+            head: null,
+            chest: null,
+            l_arm: null,
+            r_arm: null,
+            l_weapon: null,
+            r_weapon: null,
+            pubis: null,
+            l_leg: null,
+            r_leg: null,
+            l_shoe: null,
+            r_shoe: null
+        };
     }
 
     gainXp(amount) {
@@ -58,7 +89,7 @@ export class Player extends Actor {
         // Stat Boosts
         this.maxLife += 20;
         this.life = this.maxLife;
-        this.power += 3;
+        this.basePower += 3;
 
         return true;
         return true;
@@ -108,6 +139,23 @@ export class Player extends Actor {
             }
         } else {
             this.inventory.push(newItem);
+        }
+    }
+
+    equipItem(item) {
+        if (item.itemType !== 'equipment') return null;
+
+        const slot = item.slot;
+        const currentEquip = this.equipment[slot];
+
+        if (currentEquip) {
+            // CUMULATIVE LOGIC: Add value to existing item
+            currentEquip.value += item.value;
+            return { action: 'upgraded', item: currentEquip };
+        } else {
+            // Equip new if empty
+            this.equipment[slot] = item;
+            return { action: 'equipped', item: item };
         }
     }
 }
@@ -184,6 +232,11 @@ export class Item extends Entity {
             symbol = '💎';
             name = 'Invulnerability Gem';
             value = 30; // Turns
+        } else if (type === 'equipment') {
+            symbol = '🛡️'; // Default, overwritten by factory
+            name = 'Gear';
+            value = 1; // Power bonus
+            // slot must be assigned manually or by factory
         }
 
         super(x, y, symbol, 'item');

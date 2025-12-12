@@ -560,3 +560,116 @@ header h1 {
         box-shadow: 0 0 10px 2px #00ffff;
     }
 }
+
+/* Equipment Grid */
+.equipment-grid {
+    display: grid;
+    grid-template-areas:
+        ".        head     ."
+        "l_arm    chest    r_arm"
+        "l_weapon chest    r_weapon"
+        ".        pubis    ."
+        "l_leg    .        r_leg"
+        "l_shoe   .        r_shoe";
+    gap: 8px;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+.equip-slot {
+    width: 48px;
+    height: 48px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px dashed var(--text-muted);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    position: relative;
+    cursor: help;
+}
+
+.equip-slot:hover {
+    border-color: var(--accent-color);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Map slots to areas */
+.equip-slot[data-slot="head"] {
+    grid-area: head;
+}
+
+.equip-slot[data-slot="chest"] {
+    grid-area: chest;
+}
+
+.equip-slot[data-slot="l_arm"] {
+    grid-area: l_arm;
+}
+
+.equip-slot[data-slot="r_arm"] {
+    grid-area: r_arm;
+}
+
+.equip-slot[data-slot="l_weapon"] {
+    grid-area: l_weapon;
+}
+
+.equip-slot[data-slot="r_weapon"] {
+    grid-area: r_weapon;
+}
+
+.equip-slot[data-slot="pubis"] {
+    grid-area: pubis;
+}
+
+.equip-slot[data-slot="l_leg"] {
+    grid-area: l_leg;
+}
+
+.equip-slot[data-slot="r_leg"] {
+    grid-area: r_leg;
+}
+
+.equip-slot[data-slot="l_shoe"] {
+    grid-area: l_shoe;
+}
+
+.equip-slot[data-slot="r_shoe"] {
+    grid-area: r_shoe;
+}
+
+.equip-slot.spacer {
+    display: none;
+}
+
+/* Hide spacers as they are not needed with areas */
+
+
+/* Empty placeholder styling if needed, or use content property */
+.equip-slot:empty::before {
+    content: attr(title);
+    /* Show title as placeholder? Too big. */
+    /* content: '?'; */
+    font-size: 0.7rem;
+    text-align: center;
+    opacity: 0.3;
+    display: none;
+    /* Hide text, just keep box */
+}
+
+/* Badge for +Power */
+.equip-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: var(--accent-color);
+    color: #000;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 1px 3px;
+    border-radius: 3px;
+    font-family: var(--font-body);
+}

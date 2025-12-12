@@ -35,8 +35,9 @@ export class Game {
                 y: this.player.y,
                 life: this.player.life,
                 hunger: this.player.hunger,
-                power: this.player.power,
+                basePower: this.player.basePower,
                 inventory: this.player.inventory,
+                equipment: this.player.equipment,
                 xp: this.player.xp,
                 level: this.player.level,
                 nextLevelXp: this.player.nextLevelXp,
@@ -98,8 +99,12 @@ export class Game {
                 this.player = new Player(state.player.x, state.player.y);
                 this.player.life = state.player.life;
                 this.player.hunger = state.player.hunger;
-                this.player.power = state.player.power;
+                // MIGRATION: Old saves have 'power', new needs 'basePower'
+                this.player.basePower = state.player.basePower !== undefined ? state.player.basePower : (state.player.power || 10);
+
                 this.player.inventory = state.player.inventory;
+                this.player.equipment = state.player.equipment || this.player.equipment; // Load equip if exists
+
                 this.player.xp = state.player.xp || 0;
                 this.player.level = state.player.level || 1;
                 this.player.nextLevelXp = state.player.nextLevelXp || 50;
@@ -364,13 +369,41 @@ export class Game {
 
     generateLoot() {
         const roll = Math.random();
-        if (roll < 0.4) {
+        if (roll < 0.1) {
+            return this.createEquipmentDrop();
+        } else if (roll < 0.5) {
             return this.createGoldDrop();
-        } else if (roll < 0.7) {
+        } else if (roll < 0.8) {
             return new Item(0, 0, 'food');
         } else {
             return new Item(0, 0, 'potion');
         }
+    }
+
+    createEquipmentDrop() {
+        const slots = ['head', 'chest', 'l_arm', 'r_arm', 'l_weapon', 'r_weapon', 'pubis', 'l_leg', 'r_leg', 'l_shoe', 'r_shoe'];
+        const slot = slots[Math.floor(Math.random() * slots.length)];
+
+        const item = new Item(0, 0, 'equipment');
+        item.slot = slot;
+        item.value = 1; // +1 Power
+
+        // Flavor text
+        const names = {
+            head: 'Helmet', chest: 'Armor', l_arm: 'Gauntlet', r_arm: 'Gauntlet',
+            l_weapon: 'Sword', r_weapon: 'Dagger', pubis: 'Loincloth',
+            l_leg: 'Greave', r_leg: 'Greave', l_shoe: 'Boot', r_shoe: 'Boot'
+        };
+        const icons = {
+            head: '🪖', chest: '🥋', l_arm: '🧤', r_arm: '🧤',
+            l_weapon: '🗡️', r_weapon: '🔪', pubis: '🩲',
+            l_leg: '🦵', r_leg: '🦵', l_shoe: '👢', r_shoe: '👢'
+        };
+
+        item.name = names[slot] || 'Gear';
+        item.symbol = icons[slot] || '🛡️';
+
+        return item;
     }
 
     createGoldDrop() {
@@ -426,6 +459,19 @@ export class Game {
             }
             this.render();
             this.saveGame();
+        } else if (item.itemType === 'equipment') {
+            const result = this.player.equipItem(item);
+            if (result) {
+                if (result.action === 'upgraded') {
+                    this.ui.log(`Upgraded ${result.item.name} to +${result.item.value}!`, "good");
+                } else {
+                    this.ui.log(`You equipped ${result.item.name}.`, "good");
+                }
+                // Remove from inventory array
+                this.player.inventory = this.player.inventory.filter(i => i !== item);
+            }
+            this.render();
+            this.saveGame();
         }
     }
 
@@ -434,6 +480,7 @@ export class Game {
         this.ui.drawMap(this.map, this.player, fov);
         this.ui.updateStats(this.player, this.depth);
         this.ui.updateInventory(this.player.inventory, (item) => this.useItem(item));
+        this.ui.updateEquipment(this.player);
     }
 
     computeFOV(x, y, radius) {
