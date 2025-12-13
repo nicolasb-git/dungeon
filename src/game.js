@@ -379,18 +379,25 @@ export class Game {
         if (this.engagedMonsters.has(monster.id)) return;
         this.engagedMonsters.add(monster.id);
 
-        const roll = Math.random();
-        console.log("DEBUG: Initiative Roll:", roll);
-        const playerFirst = roll < 0.5;
+        const staminaRatio = this.player.stamina / this.player.maxStamina;
+        const chance = Math.floor(staminaRatio * 100);
+        const roll = Math.floor(Math.random() * 100); // 0-99
+
+        console.log(`DEBUG: Initiative Roll: ${roll} vs Chance: ${chance}`);
+
+        // Player wins if roll < chance
+        const playerFirst = roll < chance;
 
         if (playerFirst) {
-            this.ui.log("Initiative: You strike first!", "info");
+            this.ui.log(`Initiative: You won! (Roll: ${roll} < ${chance}%)`, "info");
+            this.ui.log("You strike first!", "info");
             this.performAttack(this.player, monster);
             if (monster.isAlive()) {
                 this.performAttack(monster, this.player);
             }
         } else {
-            this.ui.log(`Initiative: The ${monster.name} strikes first!`, "warning");
+            this.ui.log(`Initiative: Monster won! (Roll: ${roll} >= ${chance}%)`, "warning");
+            this.ui.log(`The ${monster.name} strikes first!`, "warning");
             this.performAttack(monster, this.player);
             if (this.player.isAlive() && monster.isAlive()) {
                 this.performAttack(this.player, monster);
