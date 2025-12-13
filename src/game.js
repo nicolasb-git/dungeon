@@ -109,6 +109,10 @@ export class Game {
                         const m = new Monster(e.x, e.y, e.monsterType || 'skeleton'); // fallback
                         m.life = e.life;
                         m.id = e.id;
+                        if (e.originX !== undefined) {
+                            m.originX = e.originX;
+                            m.originY = e.originY;
+                        }
                         return m;
                     } else if (e.type === 'item') {
                         const i = new Item(e.x, e.y, e.itemType);
@@ -221,25 +225,32 @@ export class Game {
             // Chance for Monster
             // DEBUG: 100% chance
             // Chance for Monster
-            // DEBUG: 100% chance
+            // 1-3 Monsters per room
+            // DEBUG: 100% chance for at least 1, but let's make it robust
             if (Math.random() < 1.0) {
-                // Rarity:
-                // Spider: 50%
-                // Skeleton: 40%
-                // Deamon: 10%
-                const roll = Math.random();
-                let type = 'spider';
-                if (roll < 0.1) type = 'deamon';
-                else if (roll < 0.5) type = 'skeleton';
+                // 1-3 Monsters per room
+                const monsterCount = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
 
-                // Offset slightly so it's not always dead center if stairs are there
-                // Actually stairs are only in last room.
-                // But let's add randomness inside the room
-                const rx = Math.floor(Math.random() * room.w) + room.x;
-                const ry = Math.floor(Math.random() * room.h) + room.y;
+                // console.log(`DEBUG: Spawning ${monsterCount} monsters in room ${i}`); 
 
-                if (!this.map.isWall(rx, ry) && !this.map.getEntityAt(rx, ry)) {
-                    this.map.addEntity(new Monster(rx, ry, type, this.depth));
+                for (let k = 0; k < monsterCount; k++) {
+                    const roll = Math.random();
+                    let type = 'spider';
+                    if (roll < 0.1) type = 'deamon';
+                    else if (roll < 0.5) type = 'skeleton';
+
+                    // Retry to find a valid spot
+                    let placed = false;
+                    for (let attempt = 0; attempt < 20; attempt++) {
+                        const rx = Math.floor(Math.random() * room.w) + room.x;
+                        const ry = Math.floor(Math.random() * room.h) + room.y;
+
+                        if (!this.map.isWall(rx, ry) && !this.map.getEntityAt(rx, ry) && (rx !== this.player.x || ry !== this.player.y)) {
+                            this.map.addEntity(new Monster(rx, ry, type, this.depth));
+                            placed = true;
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -343,19 +354,17 @@ export class Game {
             const mRoom = this.map.getRoomAt(monster.x, monster.y);
 
             // Logic:
-            // 1. If Same Room -> Chase
-            // 2. If Adjacent (Doorway fight) -> Attack
-
             const dx = Math.abs(this.player.x - monster.x);
             const dy = Math.abs(this.player.y - monster.y);
-            const isAdjacent = (dx <= 1 && dy <= 1); // Cheesing diagonal logic slightly, or strictly sum? 
-            // In grid movement with diagonals being optional (we don't use them usually), distance 1 is |dx|+|dy| == 1.
-            // But let's verify if map allows diagonal. Input handler: No.
-            // So adjacent means (dx+dy) === 1.
-
             const dist = dx + dy;
 
-            if ((pRoom && mRoom === pRoom) || dist === 1) {
+            // Chase if within aggro range (allows following into corridors)
+            const AGGRO_RANGE = 8;
+
+            if (dist <= AGGRO_RANGE) {
+                // Check if already updated this turn (engaged)
+                if (this.engagedMonsters && this.engagedMonsters.has(monster.id)) return;
+
                 this.moveMonsterTowardsPlayer(monster);
             }
         });
@@ -365,41 +374,58 @@ export class Game {
         const dx = this.player.x - monster.x;
         const dy = this.player.y - monster.y;
 
-        // Determine step
-        let stepX = 0;
-        let stepY = 0;
+        // Smart Pathfinding: Try primary axis, then secondary axis
+        const moves = [];
 
         if (Math.abs(dx) >= Math.abs(dy)) {
-            if (dx !== 0) stepX = Math.sign(dx);
+            // Primary X
+            if (dx !== 0) moves.push({ x: Math.sign(dx), y: 0 });
+            if (dy !== 0) moves.push({ x: 0, y: Math.sign(dy) });
         } else {
-            if (dy !== 0) stepY = Math.sign(dy);
+            // Primary Y
+            if (dy !== 0) moves.push({ x: 0, y: Math.sign(dy) });
+            if (dx !== 0) moves.push({ x: Math.sign(dx), y: 0 }); // Fallback
         }
 
-        // Try primary direction
-        let destX = monster.x + stepX;
-        let destY = monster.y + stepY;
+        for (let move of moves) {
+            const destX = monster.x + move.x;
+            const destY = monster.y + move.y;
 
-        // Resolve Move
-        this.resolveMonsterMove(monster, destX, destY, stepX, stepY);
+            // Check Leash (Max 8 blocks from origin)
+            // Use originX/Y if available, else fallback to start (though constructor ensures origin is set)
+            if (monster.originX !== undefined) {
+                const distFromOrigin = Math.abs(destX - monster.originX) + Math.abs(destY - monster.originY);
+                // Allow attack even if target is outside leash (monster doesn't move when attacking)
+                const isAttack = (destX === this.player.x && destY === this.player.y);
+
+                if (distFromOrigin > 8 && !isAttack) {
+                    continue; // Skip this move, it pulls too far from home
+                }
+            }
+
+            // If move succeeded (moved or attacked), stop.
+            if (this.tryMonsterMove(monster, destX, destY)) {
+                return;
+            }
+        }
     }
 
-    resolveMonsterMove(monster, x, y, stepX, stepY) {
+    tryMonsterMove(monster, x, y) {
         // 1. Check Collision with Player -> ATTACK
         if (x === this.player.x && y === this.player.y) {
             this.triggerCombat(monster);
-            return;
+            return true; // Action taken
         }
 
         // 2. Check Walls & Other Entities
-        // Cannot pass onto block with another monster or treasure
         if (this.map.isWall(x, y) || this.map.getEntityAt(x, y)) {
-            // Blocked. Stop.
-            return;
+            return false; // Blocked, try next move
         }
 
         // 3. Move
         monster.x = x;
         monster.y = y;
+        return true; // Moved
     }
 
     triggerCombat(monster) {

@@ -222,6 +222,8 @@ export class Monster extends Actor {
         super(x, y, symbol, 'monster', name, life, power);
         this.monsterType = type;
         this.depth = depth; // Store for reference
+        this.originX = x;
+        this.originY = y;
     }
 }
 
