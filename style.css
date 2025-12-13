@@ -8,7 +8,7 @@
     --text-muted: #8b949e;
     --border-color: #30363d;
     --health-color: #f85149;
-    --hunger-color: #d29922;
+    --stamina-color: #d29922;
     --power-color: #58a6ff;
 
     --font-heading: 'Cinzel', serif;
@@ -123,7 +123,7 @@ header h1 {
 }
 
 .flat-orange div {
-    background-color: var(--hunger-color);
+    background-color: var(--stamina-color);
 }
 
 .flat-blue div {

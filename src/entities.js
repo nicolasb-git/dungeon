@@ -49,8 +49,8 @@ export class Actor extends Entity {
 export class Player extends Actor {
     constructor(x, y) {
         super(x, y, '🤺', 'player', 'Hero', 100, 10);
-        this.maxHunger = 100;
-        this.hunger = 100;
+        this.maxStamina = 100;
+        this.stamina = 100;
         this.inventory = [];
         this.xp = 0;
         this.level = 1;
@@ -119,14 +119,14 @@ export class Player extends Actor {
         return this.invulnerableTurns > 0;
     }
 
-    decreaseHunger(amount = 1) {
-        this.hunger -= amount;
-        if (this.hunger < 0) this.hunger = 0;
+    decreaseStamina(amount = 1) {
+        this.stamina -= amount;
+        if (this.stamina < 0) this.stamina = 0;
     }
 
     eat(amount) {
-        this.hunger += amount;
-        if (this.hunger > this.maxHunger) this.hunger = this.maxHunger;
+        this.stamina += amount;
+        if (this.stamina > this.maxStamina) this.stamina = this.maxStamina;
     }
 
     addToInventory(newItem) {
@@ -140,6 +140,7 @@ export class Player extends Actor {
         } else {
             this.inventory.push(newItem);
         }
+        console.log("DEBUG: Inventory size:", this.inventory.length);
     }
 
     equipItem(item) {
@@ -191,8 +192,8 @@ export class Monster extends Actor {
         // User said: "each time user go deeper... increased by 5%"
         // Let's treat Depth 1 as base stats (scaling factor 1.0)
         // And Depth 2 as 1.05, etc.
-        // Formula: 1 + ((depth - 1) * 0.05)
-        const multiplier = 1 + ((depth - 1) * 0.05);
+        // Formula: 1 + ((depth - 1) * 0.1)
+        const multiplier = 1 + ((depth - 1) * 0.1);
 
         life = Math.floor(life * multiplier);
         power = Math.floor(power * multiplier);

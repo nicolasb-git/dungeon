@@ -8,8 +8,8 @@ export class UI {
         // Stats
         this.lifeVal = document.getElementById('stat-life-val');
         this.barLife = document.getElementById('bar-life');
-        this.hungerVal = document.getElementById('stat-hunger-val');
-        this.barHunger = document.getElementById('bar-hunger');
+        this.staminaVal = document.getElementById('stat-stamina-val');
+        this.barStamina = document.getElementById('bar-stamina');
         this.levelVal = document.getElementById('stat-level-val');
         this.xpVal = document.getElementById('stat-xp-val');
         this.barXp = document.getElementById('bar-xp');
@@ -158,10 +158,10 @@ export class UI {
         const lifePct = (player.life / player.maxLife) * 100;
         this.barLife.style.width = `${lifePct}%`;
 
-        // Hunger
-        this.hungerVal.textContent = `${player.hunger}/${player.maxHunger}`;
-        const hungerPct = (player.hunger / player.maxHunger) * 100;
-        this.barHunger.style.width = `${hungerPct}%`;
+        // Stamina
+        this.staminaVal.textContent = `${player.stamina}/${player.maxStamina}`;
+        const staminaPct2 = (player.stamina / player.maxStamina) * 100;
+        this.barStamina.style.width = `${staminaPct2}%`;
 
         // XP
         this.xpVal.textContent = `${player.xp}/${player.nextLevelXp}`;
@@ -188,6 +188,7 @@ export class UI {
     }
 
     updateInventory(inventory, onUse) {
+        console.log("DEBUG: UI updating inventory. Count:", inventory ? inventory.length : 'null');
         this.invList.innerHTML = '';
         if (inventory.length === 0) {
             this.invList.innerHTML = '<li class="empty-slot">Empty</li>';

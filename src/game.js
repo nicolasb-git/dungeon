@@ -34,7 +34,7 @@ export class Game {
                 x: this.player.x,
                 y: this.player.y,
                 life: this.player.life,
-                hunger: this.player.hunger,
+                stamina: this.player.stamina,
                 basePower: this.player.basePower,
                 inventory: this.player.inventory,
                 equipment: this.player.equipment,
@@ -98,7 +98,10 @@ export class Game {
                 // Rehydrate Player
                 this.player = new Player(state.player.x, state.player.y);
                 this.player.life = state.player.life;
-                this.player.hunger = state.player.hunger;
+                // MIGRATION: Hunger -> Stamina
+                this.player.stamina = state.player.stamina !== undefined ? state.player.stamina : (state.player.hunger || 100);
+                this.player.maxStamina = 100; // Reset max to be sure
+
                 // MIGRATION: Old saves have 'power', new needs 'basePower'
                 this.player.basePower = state.player.basePower !== undefined ? state.player.basePower : (state.player.power || 10);
 
@@ -262,7 +265,7 @@ export class Game {
                 this.combatRound(target);
                 // Combat takes movement point? Yes usually.
                 // But hunger? Let's say yes.
-                this.processHunger();
+                this.processStamina();
                 this.render();
                 return; // Don't move into monster
             } else if (target.type === 'item') {
@@ -284,7 +287,7 @@ export class Game {
             this.ui.log("Your invulnerability has faded.", "info");
         }
 
-        this.processHunger();
+        this.processStamina();
 
         this.render();
         this.saveGame();
@@ -364,6 +367,11 @@ export class Game {
                 this.ui.log(msg, "loot");
                 this.player.addToInventory(drop);
             });
+        } else {
+            // Pick up normal item
+            this.map.removeEntity(item);
+            this.ui.log(`You picked up ${item.name}.`, "loot");
+            this.player.addToInventory(item);
         }
     }
 
@@ -412,14 +420,14 @@ export class Game {
         return gold;
     }
 
-    processHunger() {
-        if (this.player.isInvulnerable()) return; // No hunger loss while invulnerable
+    processStamina() {
+        if (this.player.isInvulnerable()) return; // No stamina loss while invulnerable
 
-        this.player.decreaseHunger(1);
-        if (this.player.hunger <= 0) {
-            this.ui.log("Starvation is taking its toll...", "combat");
-            this.player.takeDamage(5);
-            if (!this.player.isAlive()) this.death("You starved to death.");
+        this.player.decreaseStamina(1);
+        if (this.player.stamina <= 0) {
+            this.ui.log("You are collapsing from FATIGUE!", "bad");
+            this.player.takeDamage(1); // Fatigue damage
+            if (!this.player.isAlive()) this.death("You died from exhaustion.");
         }
     }
 
@@ -432,7 +440,7 @@ export class Game {
 
     useItem(item) {
         if (item.itemType === 'food') {
-            this.ui.log(`You ate a ${item.name} and recovered ${item.value} hunger.`, "good");
+            this.ui.log(`You ate a ${item.name} and recovered ${item.value} stamina.`, "good");
             this.player.eat(item.value);
             item.quantity--;
             if (item.quantity <= 0) {
