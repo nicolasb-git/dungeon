@@ -1,5 +1,5 @@
 import { GameMap, TILE_WALL } from './map.js';
-import { Player, Monster, Item } from './entities.js';
+import { Player, Monster, Item, CLASSES } from './entities.js';
 import { UI } from './ui.js';
 
 export class Game {
@@ -19,10 +19,35 @@ export class Game {
     }
 
     start() {
-        this.ui.initGrid(this.map.width, this.map.height);
-        this.render();
-        if (!this.player.isAlive()) {
-            this.ui.showGameOver("You are dead.", () => this.resetGame());
+        // If player loaded from save, skip welcome
+        if (this.player && this.player.isAlive()) {
+            const el = document.getElementById('welcome-screen');
+            if (el) el.remove();
+            this.ui.initGrid(this.map.width, this.map.height);
+            this.render();
+        } else {
+            // New Game Flow
+            this.ui.initGrid(30, 20); // Temp grid
+            this.handleWelcomeScreen();
+        }
+    }
+
+    handleWelcomeScreen() {
+        const btn = document.getElementById('btn-start-game');
+
+        if (btn) {
+            // Clean listener binding
+            btn.onclick = (e) => {
+                e.preventDefault();
+                try {
+                    const el = document.getElementById('welcome-screen');
+                    if (el) el.remove();
+                    this.initNewGame();
+                } catch (e) {
+                    console.error("Failed to start game:", e);
+                    alert("Error starting game: " + e.message);
+                }
+            };
         }
     }
 
@@ -122,7 +147,8 @@ export class Game {
                 this.initNewGame();
             }
         } else {
-            this.initNewGame();
+            // No save found. Do not Init. Wait for Start().
+            console.log("No save found. Waiting for Welcome Screen.");
         }
     }
 
@@ -133,6 +159,7 @@ export class Game {
         this.setupLevel();
         this.ui.log("New Game Started.", "good");
         this.saveGame();
+        this.render();
     }
 
     nextLevel() {
@@ -231,7 +258,7 @@ export class Game {
     // ---------------- LOGIC ---------------- //
 
     handleInput(e) {
-        if (!this.player.isAlive()) return;
+        if (!this.player || !this.player.isAlive()) return;
 
         let dx = 0;
         let dy = 0;

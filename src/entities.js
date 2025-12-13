@@ -8,6 +8,27 @@ export class Entity {
     }
 }
 
+// Game Configuration
+export const CLASSES = {
+    warrior: {
+        name: "Warrior",
+        stats: {
+            life: 100,
+            maxLife: 100,
+            power: 10,
+            stamina: 100,
+            maxStamina: 100
+        },
+        perks: {
+            lifePerLevel: 20,
+            powerPerLevel: 3,
+            staminaCost: 1
+        },
+        description: "A battle-hardened fighter with high durability.",
+        image: "./assets/warrior.png" // We will move the generated image here
+    }
+};
+
 export class Actor extends Entity {
     constructor(x, y, symbol, type, name, life, power) {
         super(x, y, symbol, type);

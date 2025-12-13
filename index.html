@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shadows of the Dungeon</title>
+    <title>DUNGEON - UPDATED (Check Port)</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,7 +14,48 @@
 </head>
 
 <body>
+    <div id="error-display"
+        style="position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:10000;display:none;padding:10px;">
+    </div>
+    <script>
+        window.addEventListener('error', function (event) {
+            const display = document.getElementById('error-display');
+            display.style.display = 'block';
+            display.innerText += 'ERROR: ' + event.message + ' at ' + event.filename + ':' + event.lineno + '\n';
+            console.error(event.error);
+        });
+        window.addEventListener('unhandledrejection', function (event) {
+            const display = document.getElementById('error-display');
+            display.style.display = 'block';
+            display.innerText += 'PROMISE ERROR: ' + event.reason + '\n';
+        });
+    </script>
     <div class="app-container">
+        <!-- WELCOME SCREEN -->
+        <div id="welcome-screen" class="screen-overlay">
+            <h1 class="game-title">DUNGEON CRAWLER</h1>
+
+            <div class="class-selection">
+                <div class="class-card active">
+                    <div class="card-image">
+                        <img src="warrior.png" alt="Warrior" id="class-img-warrior">
+                    </div>
+                    <h2>WARRIOR</h2>
+                    <div class="stats-group">
+                        <p><strong>❤️ Life:</strong> <span id="start-life">100</span> (+<span
+                                id="perk-life">20</span>/lvl)</p>
+                        <p><strong>⚔️ Power:</strong> <span id="start-power">10</span> (+<span
+                                id="perk-power">3</span>/lvl)</p>
+                        <p><strong>⚡ Stamina:</strong> <span id="start-stamina">100</span> (-<span
+                                id="perk-stamina">1</span>/move)</p>
+                    </div>
+                    <button id="btn-start-game" class="btn-primary">ENTER THE DUNGEON</button>
+                    <p class="flavor-text">A battle-hardened fighter with high durability.</p>
+                </div>
+            </div>
+        </div>
+
+
         <header>
             <h1>Shadows of the Dungeon</h1>
             <div class="subtitle">A Local Browser MUD</div>
@@ -132,7 +173,7 @@
             </div>
         </main>
     </div>
-    <script type="module" src="src/main.js"></script>
+    <script type="module" src="src/main.js?v=2"></script>
 </body>
 
 </html>
