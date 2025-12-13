@@ -195,4 +195,10 @@ export class GameMap {
             this.createH_Tunnel(centerA.x, centerB.x, centerB.y);
         }
     }
+    getRoomAt(x, y) {
+        return this.rooms.find(r =>
+            x >= r.x && x < r.x + r.w &&
+            y >= r.y && y < r.y + r.h
+        );
+    }
 }

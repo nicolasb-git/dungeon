@@ -171,6 +171,7 @@ export class Game {
         rows -= 2;
 
         this.map = new GameMap(cols, rows);
+        this.ui.initGrid(cols, rows); // Ensure UI matches Map dimensions!
 
         const rooms = this.map.rooms;
 
@@ -248,6 +249,7 @@ export class Game {
     }
 
     movePlayer(dx, dy) {
+        this.engagedMonsters = new Set(); // Reset per turn
         const newX = this.player.x + dx;
         const newY = this.player.y + dy;
 
@@ -262,10 +264,17 @@ export class Game {
 
         if (target) {
             if (target.type === 'monster') {
-                this.combatRound(target);
+                this.triggerCombat(target);
                 // Combat takes movement point? Yes usually.
                 // But hunger? Let's say yes.
                 this.processStamina();
+
+                // Allow monster to fight back (other monsters, or this one if it survived and wasn't engaged?)
+                // triggerCombat adds to engagedMonsters.
+                // processMonsterTurns skips engagedMonsters.
+                // So this logic is safe.
+                this.processMonsterTurns();
+
                 this.render();
                 return; // Don't move into monster
             } else if (target.type === 'item') {
@@ -289,60 +298,157 @@ export class Game {
 
         this.processStamina();
 
+        // Monster Turn
+        this.processMonsterTurns();
+
         this.render();
         this.saveGame();
     }
 
-    combatRound(monster) {
-        // Player hits Monster
-        const pDmg = this.player.power;
-        monster.takeDamage(pDmg);
-        this.ui.log(`You hit the ${monster.name} for ${pDmg} damage!`, "combat");
+    processMonsterTurns() {
+        const pRoom = this.map.getRoomAt(this.player.x, this.player.y);
 
-        if (!monster.isAlive()) {
-            this.ui.log(`The ${monster.name} dies!`, "good");
-            // Fix: User requested (0.2 * initial life). Current life is 0. Use maxLife.
-            const xpGain = Math.floor(monster.power + (0.20 * monster.maxLife));
+        const activeMonsters = this.map.entities.filter(e =>
+            e.type === 'monster' && e.isAlive()
+        );
 
-            this.ui.log(`Gained ${xpGain} XP.`, "good");
+        activeMonsters.forEach(monster => {
+            const mRoom = this.map.getRoomAt(monster.x, monster.y);
 
-            const oldLevel = this.player.level;
-            this.player.gainXp(xpGain);
-            if (this.player.level > oldLevel) {
-                this.ui.log(`LEVEL UP! You are now level ${this.player.level}!`, "loot");
-                // DEBUG LOG
-                this.ui.log(`DEBUG: Your Power increased to ${this.player.power}!`, "info");
+            // Logic:
+            // 1. If Same Room -> Chase
+            // 2. If Adjacent (Doorway fight) -> Attack
+
+            const dx = Math.abs(this.player.x - monster.x);
+            const dy = Math.abs(this.player.y - monster.y);
+            const isAdjacent = (dx <= 1 && dy <= 1); // Cheesing diagonal logic slightly, or strictly sum? 
+            // In grid movement with diagonals being optional (we don't use them usually), distance 1 is |dx|+|dy| == 1.
+            // But let's verify if map allows diagonal. Input handler: No.
+            // So adjacent means (dx+dy) === 1.
+
+            const dist = dx + dy;
+
+            if ((pRoom && mRoom === pRoom) || dist === 1) {
+                this.moveMonsterTowardsPlayer(monster);
             }
+        });
+    }
 
-            // Monster Drop (100% chance for debug)
-            if (Math.random() < 1.0) {
-                let drop;
-                if (monster.monsterType === 'deamon') {
-                    drop = new Item(0, 0, 'gem'); // Deamon always drops Gem
-                } else {
-                    drop = this.generateLoot();
-                }
+    moveMonsterTowardsPlayer(monster) {
+        const dx = this.player.x - monster.x;
+        const dy = this.player.y - monster.y;
 
-                console.log("DEBUG: Monster dropped loot:", drop);
-                this.ui.log(`The monster dropped a ${drop.name || 'loot'}!`, "loot");
-                this.player.addToInventory(drop);
-            }
+        // Determine step
+        let stepX = 0;
+        let stepY = 0;
 
-            this.map.removeEntity(monster);
+        if (Math.abs(dx) >= Math.abs(dy)) {
+            if (dx !== 0) stepX = Math.sign(dx);
         } else {
-            // Monster hits Player
-            if (this.player.isInvulnerable()) {
-                this.ui.log(`The ${monster.name} attacks, but you are INVULNERABLE!`, "combat");
-            } else {
-                const mDmg = monster.power;
-                this.player.takeDamage(mDmg);
-                this.ui.log(`The ${monster.name} hits you back for ${mDmg} damage.`, "combat");
+            if (dy !== 0) stepY = Math.sign(dy);
+        }
 
+        // Try primary direction
+        let destX = monster.x + stepX;
+        let destY = monster.y + stepY;
+
+        // Resolve Move
+        this.resolveMonsterMove(monster, destX, destY, stepX, stepY);
+    }
+
+    resolveMonsterMove(monster, x, y, stepX, stepY) {
+        // 1. Check Collision with Player -> ATTACK
+        if (x === this.player.x && y === this.player.y) {
+            this.triggerCombat(monster);
+            return;
+        }
+
+        // 2. Check Walls & Other Entities
+        // Cannot pass onto block with another monster or treasure
+        if (this.map.isWall(x, y) || this.map.getEntityAt(x, y)) {
+            // Blocked. Stop.
+            return;
+        }
+
+        // 3. Move
+        monster.x = x;
+        monster.y = y;
+    }
+
+    triggerCombat(monster) {
+        if (this.engagedMonsters.has(monster.id)) return;
+        this.engagedMonsters.add(monster.id);
+
+        const roll = Math.random();
+        console.log("DEBUG: Initiative Roll:", roll);
+        const playerFirst = roll < 0.5;
+
+        if (playerFirst) {
+            this.ui.log("Initiative: You strike first!", "info");
+            this.performAttack(this.player, monster);
+            if (monster.isAlive()) {
+                this.performAttack(monster, this.player);
+            }
+        } else {
+            this.ui.log(`Initiative: The ${monster.name} strikes first!`, "warning");
+            this.performAttack(monster, this.player);
+            if (this.player.isAlive() && monster.isAlive()) {
+                this.performAttack(this.player, monster);
+            }
+        }
+    }
+
+    performAttack(attacker, defender) {
+        const damage = attacker.power;
+
+        if (attacker === this.player) {
+            defender.takeDamage(damage);
+            this.ui.log(`You hit the ${defender.name} for ${damage} damage!`, "combat");
+
+            if (!defender.isAlive()) {
+                this.handleMonsterDeath(defender);
+            }
+        } else {
+            if (this.player.isInvulnerable()) {
+                this.ui.log(`The ${attacker.name} attacks, but you are INVULNERABLE!`, "combat");
+            } else {
+                this.ui.log(`The ${attacker.name} hits you for ${damage} damage!`, "combat");
+                this.player.takeDamage(damage);
                 if (!this.player.isAlive()) {
-                    this.death();
+                    this.death(`Killed by a ${attacker.name}`);
                 }
             }
         }
+    }
+
+    handleMonsterDeath(monster) {
+        this.ui.log(`The ${monster.name} dies!`, "good");
+
+        // XP Calculation
+        const maxLife = monster.maxLife || 20;
+        const xpGain = Math.floor(monster.power + (0.20 * maxLife));
+
+        this.ui.log(`Gained ${xpGain} XP.`, "good");
+
+        const oldLevel = this.player.level;
+        this.player.gainXp(xpGain);
+        if (this.player.level > oldLevel) {
+            this.ui.log(`LEVEL UP! You are now level ${this.player.level}!`, "loot");
+        }
+
+        // Drops
+        if (Math.random() < 1.0) {
+            let drop;
+            if (monster.monsterType === 'deamon') {
+                drop = new Item(0, 0, 'gem');
+            } else {
+                drop = this.generateLoot();
+            }
+            this.ui.log(`The monster dropped a ${drop.name || 'loot'}!`, "loot");
+            this.player.addToInventory(drop);
+        }
+
+        this.map.removeEntity(monster);
     }
 
     collectItem(item) {
@@ -468,15 +574,39 @@ export class Game {
             this.render();
             this.saveGame();
         } else if (item.itemType === 'equipment') {
-            const result = this.player.equipItem(item);
-            if (result) {
-                if (result.action === 'upgraded') {
+            const current = this.player.equipment[item.slot];
+
+            if (current) {
+                // Upgrade Mode: Consume 1 item to boost stats
+                const result = this.player.equipItem(item);
+                if (result) {
                     this.ui.log(`Upgraded ${result.item.name} to +${result.item.value}!`, "good");
-                } else {
-                    this.ui.log(`You equipped ${result.item.name}.`, "good");
+
+                    item.quantity--;
+                    if (item.quantity <= 0) {
+                        this.player.inventory = this.player.inventory.filter(i => i !== item);
+                    }
                 }
-                // Remove from inventory array
-                this.player.inventory = this.player.inventory.filter(i => i !== item);
+            } else {
+                // Equip Mode: Move item to slot
+                if (item.quantity > 1) {
+                    // Split stack: Leave rest in inventory, equip one
+                    item.quantity--;
+
+                    // Clone single item
+                    const single = new Item(item.x, item.y, item.symbol, item.type);
+                    Object.assign(single, item); // Copy props
+                    single.quantity = 1;
+                    single.id = crypto.randomUUID(); // Unique ID
+
+                    this.player.equipItem(single);
+                    this.ui.log(`You equipped ${single.name}.`, "good");
+                } else {
+                    // Simple move
+                    this.player.equipItem(item);
+                    this.ui.log(`You equipped ${item.name}.`, "good");
+                    this.player.inventory = this.player.inventory.filter(i => i !== item);
+                }
             }
             this.render();
             this.saveGame();
