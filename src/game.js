@@ -21,34 +21,78 @@ export class Game {
     start() {
         // If player loaded from save, skip welcome
         if (this.player && this.player.isAlive()) {
-            const el = document.getElementById('welcome-screen');
+            const el = document.getElementById('character-select');
             if (el) el.remove();
             this.ui.initGrid(this.map.width, this.map.height);
             this.render();
         } else {
             // New Game Flow
             this.ui.initGrid(30, 20); // Temp grid
-            this.handleWelcomeScreen();
+            this.handleCharacterSelection(); // Direct call
         }
     }
 
     handleWelcomeScreen() {
-        const btn = document.getElementById('btn-start-game');
+        // Direct transition
+        this.handleCharacterSelection();
+    }
 
-        if (btn) {
-            // Clean listener binding
-            btn.onclick = (e) => {
-                e.preventDefault();
-                try {
-                    const el = document.getElementById('welcome-screen');
-                    if (el) el.remove();
-                    this.initNewGame();
-                } catch (e) {
-                    console.error("Failed to start game:", e);
-                    alert("Error starting game: " + e.message);
-                }
-            };
+    handleCharacterSelection() {
+        console.log("DEBUG: handleCharacterSelection called");
+        const screen = document.getElementById('character-select');
+        if (!screen) {
+            console.error("Critical: character-select element not found");
+            return;
         }
+        screen.classList.remove('hidden'); // Ensure visible
+        // screen.style.display = 'flex'; // Handled by CSS class
+
+        const grid = document.getElementById('class-selection-grid');
+        if (!grid) {
+            console.error("Critical: class-selection-grid element not found");
+            return;
+        }
+        grid.innerHTML = '';
+
+        // CSS for grid to allow side-by-side
+        grid.style.display = 'flex';
+        grid.style.gap = '2rem';
+        grid.style.flexWrap = 'wrap';
+        grid.style.justifyContent = 'center';
+
+        console.log("DEBUG: Classes available:", Object.keys(CLASSES));
+
+        Object.keys(CLASSES).forEach(key => {
+            const cls = CLASSES[key];
+            const card = document.createElement('div');
+            card.className = 'class-card'; // Reuse fancy class
+
+            // Image handling (fallback if png missing)
+            // Note: Since I don't have thief.png, I might need to rely on the defined path or a placeholder
+            // But the user requested a unified style.
+
+            card.innerHTML = `
+                <div class="card-image">
+                   <img src="${cls.image}" alt="${cls.name}" style="width:200px; height:200px; object-fit:cover; border-radius:50%; border:4px solid var(--primary-color);">
+                </div>
+                <h2>${cls.name.toUpperCase()}</h2>
+                <div class="stats-group">
+                    <p><strong>❤️ Life:</strong> ${cls.stats.life} (+${cls.perks.lifePerLevel}/lvl)</p>
+                    <p><strong>⚔️ Power:</strong> ${cls.stats.power} (+${cls.perks.powerPerLevel}/lvl)</p>
+                    <p><strong>⚡ Stamina:</strong> ${cls.stats.stamina} (-${cls.perks.staminaCost}/move)</p>
+                </div>
+                <button class="btn-primary">SELECT ${cls.name.toUpperCase()}</button>
+                <p class="flavor-text">${cls.description}</p>
+            `;
+
+            const btn = card.querySelector('button');
+            btn.onclick = () => {
+                screen.style.display = 'none'; // Hide overlay
+                this.initNewGame(key);
+            };
+
+            grid.appendChild(card);
+        });
     }
 
     // ---------------- SAVE / LOAD ---------------- //
@@ -66,7 +110,8 @@ export class Game {
                 xp: this.player.xp,
                 level: this.player.level,
                 nextLevelXp: this.player.nextLevelXp,
-                maxLife: this.player.maxLife
+                maxLife: this.player.maxLife,
+                classKey: this.player.classKey
             },
             map: {
                 width: this.map.width,
@@ -125,7 +170,8 @@ export class Game {
 
 
                 // Rehydrate Player
-                this.player = new Player(state.player.x, state.player.y);
+                const savedClass = state.player.classKey || 'warrior';
+                this.player = new Player(state.player.x, state.player.y, savedClass);
                 this.player.life = state.player.life;
                 // MIGRATION: Hunger -> Stamina
                 this.player.stamina = state.player.stamina !== undefined ? state.player.stamina : (state.player.hunger || 100);
@@ -156,12 +202,12 @@ export class Game {
         }
     }
 
-    initNewGame() {
+    initNewGame(classKey = 'warrior') {
         this.depth = 1;
         // Create player briefly so we have the object, but coordinates will be set by setupLevel
-        this.player = new Player(0, 0);
+        this.player = new Player(0, 0, classKey);
         this.setupLevel();
-        this.ui.log("New Game Started.", "good");
+        this.ui.log(`New Game Started as ${this.player.name}.`, "good");
         this.saveGame();
         this.render();
     }

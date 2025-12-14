@@ -159,7 +159,7 @@ export class UI {
         this.barLife.style.width = `${lifePct}%`;
 
         // Stamina
-        this.staminaVal.textContent = `${player.stamina}/${player.maxStamina}`;
+        this.staminaVal.textContent = `${Math.ceil(player.stamina)}/${player.maxStamina}`;
         const staminaPct2 = (player.stamina / player.maxStamina) * 100;
         this.barStamina.style.width = `${staminaPct2}%`;
 

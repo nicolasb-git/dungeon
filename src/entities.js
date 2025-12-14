@@ -25,7 +25,24 @@ export const CLASSES = {
             staminaCost: 1
         },
         description: "A battle-hardened fighter with high durability.",
-        image: "./assets/warrior.png" // We will move the generated image here
+        image: "./warrior.png" // Image in root
+    },
+    thief: {
+        name: "Thief",
+        stats: {
+            life: 100,
+            maxLife: 100,
+            power: 10,
+            stamina: 100,
+            maxStamina: 100
+        },
+        perks: {
+            lifePerLevel: 10,
+            powerPerLevel: 5,
+            staminaCost: 0.7
+        },
+        description: "A cunning rogue who moves swiftly but is less durable.",
+        image: "./thief.png"
     }
 };
 
@@ -68,13 +85,20 @@ export class Actor extends Entity {
 }
 
 export class Player extends Actor {
-    constructor(x, y) {
-        super(x, y, '🤺', 'player', 'Hero', 100, 10);
-        this.maxStamina = 100;
-        this.stamina = 100;
+    constructor(x, y, classKey = 'warrior') {
+        const charClass = CLASSES[classKey] || CLASSES['warrior'];
+        const stats = charClass.stats;
+
+        super(x, y, '🤺', 'player', charClass.name, stats.life, stats.power);
+
+        this.classKey = classKey;
+        this.perks = charClass.perks;
+
+        this.maxStamina = stats.maxStamina;
+        this.stamina = stats.stamina;
+        this.maxLife = stats.maxLife; // Ensure maxLife is set from config
+
         this.inventory = [];
-        this.xp = 0;
-        this.level = 1;
         this.xp = 0;
         this.level = 1;
         this.nextLevelXp = 50;
@@ -108,9 +132,13 @@ export class Player extends Actor {
         this.nextLevelXp = Math.floor(this.nextLevelXp * 1.5);
 
         // Stat Boosts
-        this.maxLife += 20;
+        // Stat Boosts
+        const lifeGain = this.perks ? this.perks.lifePerLevel : 20;
+        const powerGain = this.perks ? this.perks.powerPerLevel : 3;
+
+        this.maxLife += lifeGain;
         this.life = this.maxLife;
-        this.basePower += 3;
+        this.basePower += powerGain;
 
         return true;
         return true;
@@ -141,7 +169,9 @@ export class Player extends Actor {
     }
 
     decreaseStamina(amount = 1) {
-        this.stamina -= amount;
+        // Use perk cost if available (default to 1 if not)
+        const cost = this.perks ? (this.perks.staminaCost * amount) : amount;
+        this.stamina -= cost;
         if (this.stamina < 0) this.stamina = 0;
     }
 
