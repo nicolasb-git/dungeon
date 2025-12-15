@@ -168,6 +168,23 @@ export class Player extends Actor {
         return this.invulnerableTurns > 0;
     }
 
+    // Paralysis Logic
+    addParalysis(turns) {
+        this.paralyzedTurns = (this.paralyzedTurns || 0) + turns;
+    }
+
+    tickParalysis() {
+        if (this.paralyzedTurns > 0) {
+            this.paralyzedTurns--;
+            return this.paralyzedTurns === 0; // Return true if it JUST expired
+        }
+        return false;
+    }
+
+    isParalyzed() {
+        return this.paralyzedTurns > 0;
+    }
+
     decreaseStamina(amount = 1) {
         // Use perk cost if available (default to 1 if not)
         const cost = this.perks ? (this.perks.staminaCost * amount) : amount;
@@ -236,6 +253,11 @@ export class Monster extends Actor {
             name = 'Zombie';
             life = 35;
             power = 5;
+        } else if (type === 'blob') {
+            symbol = '🧊';
+            name = 'Blob';
+            life = 40;
+            power = 5;
         } else if (type === 'deamon') {
             symbol = '👹';
             name = 'Deamon';
@@ -243,13 +265,11 @@ export class Monster extends Actor {
             power = 15;
         }
 
-        // Difficulty Scaling: Increase by 10% per depth level
-        // Depth 1 = 1.1x? Or Base?
-        // User said: "each time user go deeper... increased by 5%"
-        // Let's treat Depth 1 as base stats (scaling factor 1.0)
-        // And Depth 2 as 1.1, etc.
-        // Formula: 1 + ((depth - 1) * 0.1)
-        const multiplier = 1 + ((depth - 1) * 0.1);
+        // Difficulty Scaling: Monsters get stronger with depth
+        // Depth 1 starts at 2x base stats
+        // Each additional depth adds 15% more
+        // Formula: 2 + ((depth - 1) * 0.15)
+        const multiplier = 1 + ((depth - 1) * 0.15);
 
         life = Math.floor(life * multiplier);
         power = Math.floor(power * multiplier);
@@ -259,6 +279,13 @@ export class Monster extends Actor {
         this.depth = depth; // Store for reference
         this.originX = x;
         this.originY = y;
+
+        // Special blob properties
+        if (type === 'blob') {
+            this.isSlow = true; // Moves every other turn
+            this.turnCounter = 0;
+            this.paralysisChance = 0.25; // 25% chance to paralyze on hit
+        }
     }
 }
 

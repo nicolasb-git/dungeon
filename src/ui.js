@@ -103,12 +103,15 @@ export class UI {
                     // span.style.filter = "drop-shadow(0 0 5px white)"; REMOVED FOR SHARPNESS
                     span.style.textShadow = "none"; // Ensure no shadow
 
-                    // STATUS HIERARCHY: Invulnerable > Critical > Starving
+                    // STATUS HIERARCHY: Paralyzed > Invulnerable > Critical > Starving
+                    const isParalyzed = (player.isParalyzed && player.isParalyzed()) || player.paralyzedTurns > 0;
                     const isInvuln = (player.isInvulnerable && player.isInvulnerable()) || player.invulnerableTurns > 0;
                     const isCritical = (player.life / player.maxLife) < 0.2;
                     const isStarving = (player.hunger / player.maxHunger) < 0.2;
 
-                    if (isInvuln) {
+                    if (isParalyzed) {
+                        span.classList.add('paralyzed');
+                    } else if (isInvuln) {
                         span.classList.add('invulnerable');
                     } else if (isCritical) {
                         span.classList.add('critical');

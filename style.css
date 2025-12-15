@@ -561,6 +561,27 @@ header h1 {
     }
 }
 
+.entity-player.paralyzed {
+    animation: pulse-green 1s infinite;
+    box-shadow: 0 0 10px 2px #00ff00;
+    /* Green Glow */
+    background-color: rgba(0, 255, 0, 0.3);
+}
+
+@keyframes pulse-green {
+    0% {
+        box-shadow: 0 0 10px 2px #00ff00;
+    }
+
+    50% {
+        box-shadow: 0 0 20px 5px #00ff00;
+    }
+
+    100% {
+        box-shadow: 0 0 10px 2px #00ff00;
+    }
+}
+
 /* Equipment Grid */
 .equipment-grid {
     display: grid;

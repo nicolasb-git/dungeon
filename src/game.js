@@ -283,8 +283,9 @@ export class Game {
                     const roll = Math.random();
                     let type = 'spider';
                     if (roll < 0.1) type = 'deamon';
-                    else if (roll < 0.3) type = 'zombie';
-                    else if (roll < 0.6) type = 'skeleton';
+                    else if (roll < 0.25) type = 'blob';
+                    else if (roll < 0.45) type = 'zombie';
+                    else if (roll < 0.7) type = 'skeleton';
 
                     // Retry to find a valid spot
                     let placed = false;
@@ -335,6 +336,13 @@ export class Game {
 
     movePlayer(dx, dy) {
         this.engagedMonsters = new Set(); // Reset per turn
+
+        // Tick Paralysis at start of turn (before movement check)
+        const wasParalyzed = this.player.isParalyzed();
+        if (this.player.tickParalysis()) {
+            this.ui.log("You can move again.", "info");
+        }
+
         const newX = this.player.x + dx;
         const newY = this.player.y + dy;
 
@@ -372,7 +380,16 @@ export class Game {
             }
         }
 
-        // 3. Move
+        // 3. Check if player is STILL paralyzed (after tick) - can attack but can't move
+        if (wasParalyzed && this.player.isParalyzed()) {
+            this.ui.log("You are paralyzed and cannot move!", "warning");
+            this.processMonsterTurns();
+            this.render();
+            this.saveGame();
+            return;
+        }
+
+        // 4. Move
         this.player.x = newX;
         this.player.y = newY;
 
@@ -399,6 +416,14 @@ export class Game {
 
         activeMonsters.forEach(monster => {
             const mRoom = this.map.getRoomAt(monster.x, monster.y);
+
+            // Blob slow movement - only moves every other turn
+            if (monster.isSlow) {
+                monster.turnCounter = (monster.turnCounter || 0) + 1;
+                if (monster.turnCounter % 2 !== 0) {
+                    return; // Skip this turn
+                }
+            }
 
             // Logic:
             const dx = Math.abs(this.player.x - monster.x);
@@ -506,11 +531,19 @@ export class Game {
     }
 
     performAttack(attacker, defender) {
-        const damage = attacker.power;
+        let damage = attacker.power;
+
+        // If attacker is paralyzed player, deal no damage
+        if (attacker === this.player && this.player.isParalyzed()) {
+            damage = 0;
+            this.ui.log("You swing weakly while paralyzed - no damage!", "warning");
+        }
 
         if (attacker === this.player) {
             defender.takeDamage(damage);
-            this.ui.log(`You hit the ${defender.name} for ${damage} damage!`, "combat");
+            if (damage > 0) {
+                this.ui.log(`You hit the ${defender.name} for ${damage} damage!`, "combat");
+            }
 
             if (!defender.isAlive()) {
                 this.handleMonsterDeath(defender);
@@ -521,6 +554,13 @@ export class Game {
             } else {
                 this.ui.log(`The ${attacker.name} hits you for ${damage} damage!`, "combat");
                 this.player.takeDamage(damage);
+
+                // Blob paralysis effect - 50% chance
+                if (attacker.paralysisChance && Math.random() < attacker.paralysisChance) {
+                    this.player.addParalysis(1);
+                    this.ui.log(`The ${attacker.name}'s slime paralyzes you!`, "bad");
+                }
+
                 if (!this.player.isAlive()) {
                     this.death(`Killed by a ${attacker.name}`);
                 }
