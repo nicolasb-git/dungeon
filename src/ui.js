@@ -11,6 +11,7 @@ export class UI {
         this.staminaVal = document.getElementById('stat-stamina-val');
         this.barStamina = document.getElementById('bar-stamina');
         this.levelVal = document.getElementById('stat-level-val');
+        this.classVal = document.getElementById('stat-class-val'); // New binding
         this.xpVal = document.getElementById('stat-xp-val');
         this.barXp = document.getElementById('bar-xp');
         this.powerVal = document.getElementById('val-power');
@@ -170,6 +171,7 @@ export class UI {
 
         // Power & Depth & Level
         this.levelVal.textContent = player.level;
+        if (this.classVal) this.classVal.textContent = player.name; // Update Class Name
         // Using player.level which is now the source of truth
         this.powerVal.innerHTML = `${player.power} <span style="font-size:0.8rem; color:var(--text-muted); margin-left:10px;">Depth ${depth || 1}</span>`;
         if (this.powerLabel) this.powerLabel.textContent = player.power; // Fix: Update label

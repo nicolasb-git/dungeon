@@ -283,7 +283,8 @@ export class Game {
                     const roll = Math.random();
                     let type = 'spider';
                     if (roll < 0.1) type = 'deamon';
-                    else if (roll < 0.5) type = 'skeleton';
+                    else if (roll < 0.3) type = 'zombie';
+                    else if (roll < 0.6) type = 'skeleton';
 
                     // Retry to find a valid spot
                     let placed = false;

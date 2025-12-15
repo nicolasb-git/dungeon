@@ -231,6 +231,11 @@ export class Monster extends Actor {
             life = 20;
             life = 20;
             power = 3;
+        } else if (type === 'zombie') {
+            symbol = '🧟';
+            name = 'Zombie';
+            life = 35;
+            power = 5;
         } else if (type === 'deamon') {
             symbol = '👹';
             name = 'Deamon';
@@ -238,11 +243,11 @@ export class Monster extends Actor {
             power = 15;
         }
 
-        // Difficulty Scaling: Increase by 5% per depth level
-        // Depth 1 = 1.05x? Or Base?
+        // Difficulty Scaling: Increase by 10% per depth level
+        // Depth 1 = 1.1x? Or Base?
         // User said: "each time user go deeper... increased by 5%"
         // Let's treat Depth 1 as base stats (scaling factor 1.0)
-        // And Depth 2 as 1.05, etc.
+        // And Depth 2 as 1.1, etc.
         // Formula: 1 + ((depth - 1) * 0.1)
         const multiplier = 1 + ((depth - 1) * 0.1);
 
