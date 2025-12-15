@@ -266,9 +266,9 @@ export class Monster extends Actor {
         }
 
         // Difficulty Scaling: Monsters get stronger with depth
-        // Depth 1 starts at 2x base stats
+        // Depth 1 starts at 1x base stats
         // Each additional depth adds 15% more
-        // Formula: 2 + ((depth - 1) * 0.15)
+        // Formula: 1 + ((depth - 1) * 0.15)
         const multiplier = 1 + ((depth - 1) * 0.15);
 
         life = Math.floor(life * multiplier);

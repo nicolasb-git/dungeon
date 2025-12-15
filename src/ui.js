@@ -24,6 +24,9 @@ export class UI {
         this.modalTitle = document.getElementById('modal-title');
         this.modalMsg = document.getElementById('modal-msg');
         this.modalBtn = document.getElementById('modal-restart');
+
+        // Status Effects
+        this.statusEffects = document.getElementById('status-effects');
     }
 
     initGrid(width, height) {
@@ -275,5 +278,29 @@ export class UI {
                 slot.classList.remove('equipped');
             }
         });
+    }
+
+    updateStatusEffects(player) {
+        if (!this.statusEffects) return;
+
+        this.statusEffects.innerHTML = ''; // Clear existing icons
+
+        // Check for paralysis
+        if (player.isParalyzed && player.isParalyzed()) {
+            const icon = document.createElement('span');
+            icon.className = 'status-icon paralyzed';
+            icon.textContent = '🧊';
+            icon.title = 'Paralyzed';
+            this.statusEffects.appendChild(icon);
+        }
+
+        // Check for invulnerability
+        if (player.isInvulnerable && player.isInvulnerable()) {
+            const icon = document.createElement('span');
+            icon.className = 'status-icon invulnerable';
+            icon.textContent = '🛡️';
+            icon.title = 'Invulnerable';
+            this.statusEffects.appendChild(icon);
+        }
     }
 }

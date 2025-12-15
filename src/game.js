@@ -337,6 +337,22 @@ export class Game {
     movePlayer(dx, dy) {
         this.engagedMonsters = new Set(); // Reset per turn
 
+        // DEBUG: Log monsters around the player at the start of the turn
+        const allMonsters = this.map.entities.filter(e => e.type === 'monster' && e.isAlive());
+        const nearbyMonsters = allMonsters.filter(m => {
+            const dxm = Math.abs(m.x - this.player.x);
+            const dym = Math.abs(m.y - this.player.y);
+            return dxm <= 1 && dym <= 1; // 8 neighbours + current tile
+        });
+        console.log("DEBUG: Start of turn - total monsters:", allMonsters.length,
+            "nearby monsters:", nearbyMonsters.map(m => ({
+                id: m.id,
+                type: m.monsterType,
+                x: m.x,
+                y: m.y,
+                life: m.life
+            })));
+
         // Tick Paralysis at start of turn (before movement check)
         const wasParalyzed = this.player.isParalyzed();
         if (this.player.tickParalysis()) {
@@ -357,6 +373,15 @@ export class Game {
 
         if (target) {
             if (target.type === 'monster') {
+                console.log("DEBUG: Player is attacking monster:", {
+                    id: target.id,
+                    type: target.monsterType,
+                    name: target.name,
+                    x: target.x,
+                    y: target.y,
+                    life: target.life
+                });
+
                 this.triggerCombat(target);
                 // Combat takes movement point? Yes usually.
                 // But hunger? Let's say yes.
@@ -366,7 +391,9 @@ export class Game {
                 // triggerCombat adds to engagedMonsters.
                 // processMonsterTurns skips engagedMonsters.
                 // So this logic is safe.
+                console.log("DEBUG: After combat, before monster turns - monsters alive:", this.map.entities.filter(e => e.type === 'monster' && e.isAlive()).length);
                 this.processMonsterTurns();
+                console.log("DEBUG: After monster turns - monsters alive:", this.map.entities.filter(e => e.type === 'monster' && e.isAlive()).length);
 
                 this.render();
                 return; // Don't move into monster
@@ -504,6 +531,17 @@ export class Game {
         if (this.engagedMonsters.has(monster.id)) return;
         this.engagedMonsters.add(monster.id);
 
+        // DEBUG: Snapshot of monsters right before this combat
+        const monstersBefore = this.map.entities.filter(e => e.type === 'monster' && e.isAlive());
+        console.log("DEBUG: triggerCombat - starting combat with monster", {
+            id: monster.id,
+            type: monster.monsterType,
+            name: monster.name,
+            x: monster.x,
+            y: monster.y,
+            life: monster.life
+        }, "Total monsters alive:", monstersBefore.length);
+
         const staminaRatio = this.player.stamina / this.player.maxStamina;
         const chance = Math.floor(staminaRatio * 100);
         const roll = Math.floor(Math.random() * 100); // 0-99
@@ -528,6 +566,10 @@ export class Game {
                 this.performAttack(this.player, monster);
             }
         }
+
+        // DEBUG: Snapshot of monsters right after this combat resolution
+        const monstersAfter = this.map.entities.filter(e => e.type === 'monster' && e.isAlive());
+        console.log("DEBUG: triggerCombat - combat resolved. Total monsters alive now:", monstersAfter.length);
     }
 
     performAttack(attacker, defender) {
@@ -540,10 +582,21 @@ export class Game {
         }
 
         if (attacker === this.player) {
+            const beforeLife = defender.life;
             defender.takeDamage(damage);
             if (damage > 0) {
                 this.ui.log(`You hit the ${defender.name} for ${damage} damage!`, "combat");
             }
+
+            console.log("DEBUG: performAttack (player) -> defender state", {
+                defenderId: defender.id,
+                name: defender.name,
+                type: defender.monsterType,
+                beforeLife,
+                damage,
+                afterLife: defender.life,
+                isAlive: defender.isAlive()
+            });
 
             if (!defender.isAlive()) {
                 this.handleMonsterDeath(defender);
@@ -569,6 +622,16 @@ export class Game {
     }
 
     handleMonsterDeath(monster) {
+        const monstersBefore = this.map.entities.filter(e => e.type === 'monster' && e.isAlive());
+        console.log("DEBUG: handleMonsterDeath called for", {
+            id: monster.id,
+            type: monster.monsterType,
+            name: monster.name,
+            x: monster.x,
+            y: monster.y,
+            life: monster.life
+        }, "Monsters alive before removal:", monstersBefore.length);
+
         this.ui.log(`The ${monster.name} dies!`, "good");
 
         // XP Calculation
@@ -596,6 +659,9 @@ export class Game {
         }
 
         this.map.removeEntity(monster);
+
+        const monstersAfter = this.map.entities.filter(e => e.type === 'monster' && e.isAlive());
+        console.log("DEBUG: handleMonsterDeath finished. Monsters alive after removal:", monstersAfter.length);
     }
 
     collectItem(item) {
@@ -764,6 +830,7 @@ export class Game {
         const fov = this.computeFOV(this.player.x, this.player.y, 3); // Radius 3
         this.ui.drawMap(this.map, this.player, fov);
         this.ui.updateStats(this.player, this.depth);
+        this.ui.updateStatusEffects(this.player);
         this.ui.updateInventory(this.player.inventory, (item) => this.useItem(item));
         this.ui.updateEquipment(this.player);
     }
