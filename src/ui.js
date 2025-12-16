@@ -297,7 +297,9 @@ export class UI {
         }
 
         // Check for invulnerability
-        if (player.isInvulnerable && player.isInvulnerable()) {
+        // Use the isInvulnerable() method consistently to ensure accurate state
+        const isInvulnerable = player.isInvulnerable ? player.isInvulnerable() : false;
+        if (isInvulnerable) {
             const icon = document.createElement('span');
             icon.className = 'status-icon invulnerable';
             icon.textContent = '🛡️';

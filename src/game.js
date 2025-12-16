@@ -426,6 +426,8 @@ export class Game {
         // Tick Buffs
         if (this.player.tickBuffs()) {
             this.ui.log("Your invulnerability has faded.", "info");
+            // Re-render to update the visual state (remove invulnerability icon)
+            this.render();
         }
 
         this.processStamina();
