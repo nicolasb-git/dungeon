@@ -107,11 +107,13 @@ export class UI {
                     span.style.textShadow = "none"; // Ensure no shadow
 
                     // STATUS HIERARCHY: Paralyzed > Invulnerable > Critical > Starving
-                    const isParalyzed = (player.isParalyzed && player.isParalyzed()) || player.paralyzedTurns > 0;
-                    const isInvuln = (player.isInvulnerable && player.isInvulnerable()) || player.invulnerableTurns > 0;
+                    // Use the isParalyzed() method consistently to ensure accurate state
+                    const isParalyzed = player.isParalyzed ? player.isParalyzed() : false;
+                    const isInvuln = player.isInvulnerable ? player.isInvulnerable() : false;
                     const isCritical = (player.life / player.maxLife) < 0.2;
-                    const isStarving = (player.hunger / player.maxHunger) < 0.2;
+                    const isStarving = player.hunger !== undefined && player.maxHunger !== undefined && (player.hunger / player.maxHunger) < 0.2;
 
+                    // Only add classes if the condition is true (don't add if false)
                     if (isParalyzed) {
                         span.classList.add('paralyzed');
                     } else if (isInvuln) {

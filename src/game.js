@@ -365,6 +365,8 @@ export class Game {
             // Tick paralysis at the END of your (skipped) turn
             if (this.player.tickParalysis && this.player.tickParalysis()) {
                 this.ui.log("You can move again.", "info");
+                // Re-render to update the visual state (remove paralysis glow)
+                this.render();
             }
             return;
         }
@@ -477,6 +479,19 @@ export class Game {
             // Chase if within aggro range (allows following into corridors)
             const AGGRO_RANGE = 8;
 
+            const playerParalyzed = this.player.isParalyzed ? this.player.isParalyzed() : false;
+            console.log("DEBUG: Monster considering turn:", {
+                id: monster.id,
+                type: monster.monsterType,
+                monsterX: monster.x,
+                monsterY: monster.y,
+                playerX: this.player.x,
+                playerY: this.player.y,
+                distance: dist,
+                inRange: dist <= AGGRO_RANGE,
+                playerParalyzed: playerParalyzed
+            });
+
             if (dist <= AGGRO_RANGE) {
                 // Check if already updated this turn (engaged)
                 if (this.engagedMonsters && this.engagedMonsters.has(monster.id)) {
@@ -494,6 +509,13 @@ export class Game {
                     fromY: monster.y
                 });
                 this.moveMonsterTowardsPlayer(monster);
+            } else {
+                console.log("DEBUG: Monster out of aggro range, not moving:", {
+                    id: monster.id,
+                    type: monster.monsterType,
+                    distance: dist,
+                    maxRange: AGGRO_RANGE
+                });
             }
         });
 
@@ -565,11 +587,15 @@ export class Game {
     tryMonsterMove(monster, x, y) {
         // 1. Check Collision with Player -> ATTACK
         if (x === this.player.x && y === this.player.y) {
+            const playerParalyzed = this.player.isParalyzed ? this.player.isParalyzed() : false;
             console.log("DEBUG: Monster is attacking player (monster-initiated combat):", {
                 id: monster.id,
                 type: monster.monsterType,
                 fromX: monster.x,
-                fromY: monster.y
+                fromY: monster.y,
+                playerX: this.player.x,
+                playerY: this.player.y,
+                playerParalyzed: playerParalyzed
             });
 
             // NOTE:
@@ -594,7 +620,18 @@ export class Game {
     // Monster-initiated attack when moving into the player.
     // This is intentionally one-sided: the player does NOT get a free counter-attack here.
     monsterAttackPlayer(monster) {
-        if (!this.player || !this.player.isAlive()) return;
+        console.log("DEBUG: monsterAttackPlayer called", {
+            monsterId: monster.id,
+            monsterType: monster.monsterType,
+            playerParalyzed: this.player.isParalyzed ? this.player.isParalyzed() : false,
+            playerLife: this.player.life,
+            playerAlive: this.player.isAlive()
+        });
+
+        if (!this.player || !this.player.isAlive()) {
+            console.log("DEBUG: monsterAttackPlayer aborted - player not alive");
+            return;
+        }
 
         let damage = monster.power;
 
@@ -603,8 +640,15 @@ export class Game {
             return;
         }
 
+        const playerWasParalyzed = this.player.isParalyzed ? this.player.isParalyzed() : false;
         this.ui.log(`The ${monster.name} hits you for ${damage} damage!`, "combat");
         this.player.takeDamage(damage);
+
+        console.log("DEBUG: monsterAttackPlayer - damage dealt", {
+            damage,
+            playerLifeAfter: this.player.life,
+            playerWasParalyzed
+        });
 
         // Blob paralysis effect - 50% chance (or configured chance)
         if (monster.paralysisChance && Math.random() < monster.paralysisChance) {
@@ -666,9 +710,15 @@ export class Game {
         let damage = attacker.power;
 
         // If attacker is paralyzed player, deal no damage
-        if (attacker === this.player && this.player.isParalyzed()) {
-            damage = 0;
-            this.ui.log("You swing weakly while paralyzed - no damage!", "warning");
+        if (attacker === this.player) {
+            const isParalyzed = this.player.isParalyzed && this.player.isParalyzed();
+            if (isParalyzed) {
+                console.log("DEBUG: Player is paralyzed, blocking attack. Paralyzed turns:", this.player.paralyzedTurns);
+                damage = 0;
+                this.ui.log("You swing weakly while paralyzed - no damage!", "warning");
+                // Don't proceed with attack if paralyzed
+                return;
+            }
         }
 
         if (attacker === this.player) {
