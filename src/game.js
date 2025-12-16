@@ -353,10 +353,20 @@ export class Game {
                 life: m.life
             })));
 
-        // Tick Paralysis at start of turn (before movement check)
-        const wasParalyzed = this.player.isParalyzed();
-        if (this.player.tickParalysis()) {
-            this.ui.log("You can move again.", "info");
+        // Paralysis: if active, the player loses their turn (cannot move or attack)
+        if (this.player.isParalyzed && this.player.isParalyzed()) {
+            this.ui.log("You are paralyzed and cannot move or attack this turn!", "warning");
+
+            // Monsters still take their turn while you are paralyzed
+            this.processMonsterTurns();
+            this.render();
+            this.saveGame();
+
+            // Tick paralysis at the END of your (skipped) turn
+            if (this.player.tickParalysis && this.player.tickParalysis()) {
+                this.ui.log("You can move again.", "info");
+            }
+            return;
         }
 
         const newX = this.player.x + dx;
@@ -407,16 +417,7 @@ export class Game {
             }
         }
 
-        // 3. Check if player is STILL paralyzed (after tick) - can attack but can't move
-        if (wasParalyzed && this.player.isParalyzed()) {
-            this.ui.log("You are paralyzed and cannot move!", "warning");
-            this.processMonsterTurns();
-            this.render();
-            this.saveGame();
-            return;
-        }
-
-        // 4. Move
+        // 3. Move
         this.player.x = newX;
         this.player.y = newY;
 
@@ -441,6 +442,14 @@ export class Game {
             e.type === 'monster' && e.isAlive()
         );
 
+        console.log("DEBUG: processMonsterTurns - starting. Active monsters:", activeMonsters.map(m => ({
+            id: m.id,
+            type: m.monsterType,
+            x: m.x,
+            y: m.y,
+            life: m.life
+        })));
+
         activeMonsters.forEach(monster => {
             const mRoom = this.map.getRoomAt(monster.x, monster.y);
 
@@ -448,6 +457,14 @@ export class Game {
             if (monster.isSlow) {
                 monster.turnCounter = (monster.turnCounter || 0) + 1;
                 if (monster.turnCounter % 2 !== 0) {
+                    console.log("DEBUG: Monster turn skipped due to slow:", {
+                        id: monster.id,
+                        type: monster.monsterType,
+                        x: monster.x,
+                        y: monster.y,
+                        life: monster.life,
+                        turnCounter: monster.turnCounter
+                    });
                     return; // Skip this turn
                 }
             }
@@ -462,11 +479,34 @@ export class Game {
 
             if (dist <= AGGRO_RANGE) {
                 // Check if already updated this turn (engaged)
-                if (this.engagedMonsters && this.engagedMonsters.has(monster.id)) return;
+                if (this.engagedMonsters && this.engagedMonsters.has(monster.id)) {
+                    console.log("DEBUG: Monster already engaged this turn, skipping move:", {
+                        id: monster.id,
+                        type: monster.monsterType
+                    });
+                    return;
+                }
 
+                console.log("DEBUG: Monster taking turn towards player:", {
+                    id: monster.id,
+                    type: monster.monsterType,
+                    fromX: monster.x,
+                    fromY: monster.y
+                });
                 this.moveMonsterTowardsPlayer(monster);
             }
         });
+
+        const monstersAfter = this.map.entities.filter(e =>
+            e.type === 'monster' && e.isAlive()
+        );
+        console.log("DEBUG: processMonsterTurns - finished. Active monsters:", monstersAfter.map(m => ({
+            id: m.id,
+            type: m.monsterType,
+            x: m.x,
+            y: m.y,
+            life: m.life
+        })));
     }
 
     moveMonsterTowardsPlayer(monster) {
@@ -504,15 +544,39 @@ export class Game {
 
             // If move succeeded (moved or attacked), stop.
             if (this.tryMonsterMove(monster, destX, destY)) {
+                console.log("DEBUG: Monster action taken:", {
+                    id: monster.id,
+                    type: monster.monsterType,
+                    toX: monster.x,
+                    toY: monster.y
+                });
                 return;
             }
         }
+
+        console.log("DEBUG: Monster could not move this turn (all moves blocked):", {
+            id: monster.id,
+            type: monster.monsterType,
+            x: monster.x,
+            y: monster.y
+        });
     }
 
     tryMonsterMove(monster, x, y) {
         // 1. Check Collision with Player -> ATTACK
         if (x === this.player.x && y === this.player.y) {
-            this.triggerCombat(monster);
+            console.log("DEBUG: Monster is attacking player (monster-initiated combat):", {
+                id: monster.id,
+                type: monster.monsterType,
+                fromX: monster.x,
+                fromY: monster.y
+            });
+
+            // NOTE:
+            // We now use a simplified, MONSTER-ONLY attack when the monster moves into the player.
+            // This avoids the feeling that the player "randomly" attacks a surrounding monster
+            // on their own move. The player only attacks the monster they intentionally walk into.
+            this.monsterAttackPlayer(monster);
             return true; // Action taken
         }
 
@@ -525,6 +589,32 @@ export class Game {
         monster.x = x;
         monster.y = y;
         return true; // Moved
+    }
+
+    // Monster-initiated attack when moving into the player.
+    // This is intentionally one-sided: the player does NOT get a free counter-attack here.
+    monsterAttackPlayer(monster) {
+        if (!this.player || !this.player.isAlive()) return;
+
+        let damage = monster.power;
+
+        if (this.player.isInvulnerable()) {
+            this.ui.log(`The ${monster.name} attacks, but you are INVULNERABLE!`, "combat");
+            return;
+        }
+
+        this.ui.log(`The ${monster.name} hits you for ${damage} damage!`, "combat");
+        this.player.takeDamage(damage);
+
+        // Blob paralysis effect - 50% chance (or configured chance)
+        if (monster.paralysisChance && Math.random() < monster.paralysisChance) {
+            this.player.addParalysis(1);
+            this.ui.log(`The ${monster.name}'s slime paralyzes you!`, "bad");
+        }
+
+        if (!this.player.isAlive()) {
+            this.death(`Killed by a ${monster.name}`);
+        }
     }
 
     triggerCombat(monster) {
