@@ -255,7 +255,7 @@ export class UI {
         };
     }
 
-    updateEquipment(player) {
+    updateEquipment(player, onSlotClick) {
         // Loop through all slots in the HTML
         const slots = document.querySelectorAll('.equip-slot[data-slot]');
         slots.forEach(slot => {
@@ -264,10 +264,17 @@ export class UI {
 
             slot.innerHTML = ''; // Clear previous
 
+            // Remove old listeners (by cloning? No, simple re-assignment of onclick is enough if not using addEventListener)
+            // Better: just set onclick property which overwrites previous
+            slot.onclick = () => {
+                if (onSlotClick) onSlotClick(key);
+            };
+
             if (item) {
                 slot.textContent = item.symbol;
-                slot.title = `${item.name} (${key}) +${item.value} Power`;
+                slot.title = `${item.name} (${key}) +${item.value} Power\nClick to Upgrade (500 Gold)`;
                 slot.classList.add('equipped');
+                slot.style.cursor = "pointer"; // Indicate clickable
 
                 // Badge for power
                 if (item.value) {
@@ -282,6 +289,7 @@ export class UI {
                 // For now leave empty
                 slot.title = key; // Reset title
                 slot.classList.remove('equipped');
+                slot.style.cursor = "default";
             }
         });
     }

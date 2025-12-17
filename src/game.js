@@ -1008,9 +1008,34 @@ export class Game {
         const fov = this.computeFOV(this.player.x, this.player.y, 3); // Radius 3
         this.ui.drawMap(this.map, this.player, fov);
         this.ui.updateStats(this.player, this.depth);
+        this.ui.updateStats(this.player, this.depth);
         this.ui.updateStatusEffects(this.player);
         this.ui.updateInventory(this.player.inventory, (item) => this.useItem(item));
-        this.ui.updateEquipment(this.player);
+        this.ui.updateEquipment(this.player, (slot) => this.handleEquipmentClick(slot));
+    }
+
+    handleEquipmentClick(slot) {
+        const item = this.player.equipment[slot];
+        if (!item) return;
+
+        // Check for Gold
+        const goldItem = this.player.inventory.find(i => i.itemType === 'gold');
+        const goldAmount = goldItem ? goldItem.value : 0;
+
+        if (goldAmount >= 500) {
+            goldItem.value -= 500;
+            if (goldItem.value <= 0) {
+                this.player.inventory = this.player.inventory.filter(i => i !== goldItem);
+            }
+
+            item.value += 1;
+            this.ui.log(`Upgraded ${item.name} to +${item.value} for 500 gold!`, "good");
+
+            this.render();
+            this.saveGame();
+        } else {
+            this.ui.log(`Not enough gold! Need 500, have ${goldAmount}.`, "warning");
+        }
     }
 
     computeFOV(x, y, radius) {
