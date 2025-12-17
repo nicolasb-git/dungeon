@@ -840,3 +840,32 @@ header h1 {
 .hidden {
     display: none !important;
 }
+
+/* Pox Effect - Purple Glow (Matches Paralyzed style) */
+.entity-player.poxed {
+    animation: pulse-purple 1s infinite;
+    box-shadow: 0 0 10px 2px #9b59b6;
+    /* Purple Glow */
+    background-color: rgba(155, 89, 182, 0.3);
+}
+
+@keyframes pulse-purple {
+    0% {
+        box-shadow: 0 0 10px 2px #9b59b6;
+    }
+
+    50% {
+        box-shadow: 0 0 20px 5px #9b59b6;
+    }
+
+    100% {
+        box-shadow: 0 0 10px 2px #9b59b6;
+    }
+}
+
+/* Status Icon for Pox */
+.status-icon.poxed {
+    color: #9b59b6;
+    border-color: #9b59b6;
+    background: rgba(155, 89, 182, 0.2);
+}

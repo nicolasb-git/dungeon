@@ -286,6 +286,7 @@ export class Game {
                     else if (roll < 0.25) type = 'blob';
                     else if (roll < 0.45) type = 'zombie';
                     else if (roll < 0.7) type = 'skeleton';
+                    else type = 'rat'; // High chance for remaining pool
 
                     // Retry to find a valid spot
                     let placed = false;
@@ -427,6 +428,11 @@ export class Game {
         if (this.player.tickBuffs()) {
             this.ui.log("Your invulnerability has faded.", "info");
             // Re-render to update the visual state (remove invulnerability icon)
+            this.render();
+        }
+
+        if (this.player.tickPox()) {
+            this.ui.log("The pox has run its course. You feel your strength return.", "good");
             this.render();
         }
 
@@ -685,7 +691,9 @@ export class Game {
         console.log(`DEBUG: Initiative Roll: ${roll} vs Chance: ${chance}`);
 
         // Player wins if roll < chance
-        const playerFirst = roll < chance;
+        // UNLESS monster has initiative (like Rat)
+        const monsterWinsInitiative = monster.hasInitiative;
+        const playerFirst = !monsterWinsInitiative && (roll < chance);
 
         if (playerFirst) {
             this.ui.log(`Initiative: You won! (Roll: ${roll} < ${chance}%)`, "info");
@@ -695,7 +703,11 @@ export class Game {
                 this.performAttack(monster, this.player);
             }
         } else {
-            this.ui.log(`Initiative: Monster won! (Roll: ${roll} >= ${chance}%)`, "warning");
+            if (monsterWinsInitiative) {
+                this.ui.log(`The ${monster.name} always has the initiative!`, "warning");
+            } else {
+                this.ui.log(`Initiative: Monster won! (Roll: ${roll} >= ${chance}%)`, "warning");
+            }
             this.ui.log(`The ${monster.name} strikes first!`, "warning");
             this.performAttack(monster, this.player);
             if (this.player.isAlive() && monster.isAlive()) {
@@ -754,6 +766,17 @@ export class Game {
                 if (attacker.paralysisChance && Math.random() < attacker.paralysisChance) {
                     this.player.addParalysis(1);
                     this.ui.log(`The ${attacker.name}'s slime paralyzes you!`, "bad");
+                }
+
+                // Rat Pox effect - 20% chance
+                if (attacker.poxChance && Math.random() < attacker.poxChance && !this.player.isInvulnerable()) {
+                    if (!this.player.isPoxed()) {
+                        this.player.addPox(5);
+                        this.ui.log(`The ${attacker.name} infects you with POX! Your power is halved!`, "bad");
+                    } else {
+                        this.player.poxedTurns = 5;
+                        this.ui.log(`The ${attacker.name} re-infects you with POX!`, "bad");
+                    }
                 }
 
                 if (!this.player.isAlive()) {
@@ -912,16 +935,29 @@ export class Game {
         } else if (item.itemType === 'potion') {
             this.ui.log(`You drank a ${item.name} and recovered ${item.value} life.`, "good");
             this.player.heal(item.value);
+
+            // Dispel Pox
+            if (this.player.isPoxed()) {
+                this.player.poxedTurns = 0;
+                this.ui.log("The potion cleansed the pox!", "good");
+            }
+
             item.quantity--;
             if (item.quantity <= 0) {
                 this.player.inventory = this.player.inventory.filter(i => i !== item);
             }
             this.render();
-            this.render();
             this.saveGame();
         } else if (item.itemType === 'gem') {
             this.ui.log(`You used the ${item.name} and feel INVINCIBLE!`, "good");
             this.player.addInvulnerability(item.value);
+
+            // Dispel Pox
+            if (this.player.isPoxed()) {
+                this.player.poxedTurns = 0;
+                this.ui.log("The gem's power purged the pox!", "good");
+            }
+
             item.quantity--;
             if (item.quantity <= 0) {
                 this.player.inventory = this.player.inventory.filter(i => i !== item);

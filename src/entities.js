@@ -62,7 +62,14 @@ export class Actor extends Entity {
                 if (item && item.value) bonus += item.value;
             });
         }
-        return this.basePower + bonus;
+        let totalPower = this.basePower + bonus;
+
+        // Apply pox debuff - halves power
+        if (this.isPoxed && this.isPoxed()) {
+            totalPower = Math.floor(totalPower / 2);
+        }
+
+        return totalPower;
     }
 
     set power(val) {
@@ -185,6 +192,23 @@ export class Player extends Actor {
         return this.paralyzedTurns > 0;
     }
 
+    // Pox Logic
+    addPox(turns) {
+        this.poxedTurns = (this.poxedTurns || 0) + turns;
+    }
+
+    tickPox() {
+        if (this.poxedTurns > 0) {
+            this.poxedTurns--;
+            return this.poxedTurns === 0;
+        }
+        return false;
+    }
+
+    isPoxed() {
+        return this.poxedTurns > 0;
+    }
+
     decreaseStamina(amount = 1) {
         // Use perk cost if available (default to 1 if not)
         const cost = this.perks ? (this.perks.staminaCost * amount) : amount;
@@ -263,6 +287,11 @@ export class Monster extends Actor {
             name = 'Deamon';
             life = 40;
             power = 15;
+        } else if (type === 'rat') {
+            symbol = '🐀';
+            name = 'Rat';
+            life = 15;
+            power = 5;
         }
 
         // Difficulty Scaling: Monsters get stronger with depth
@@ -285,6 +314,12 @@ export class Monster extends Actor {
             this.isSlow = true; // Moves every other turn
             this.turnCounter = 0;
             this.paralysisChance = 0.25; // 25% chance to paralyze on hit
+        }
+
+        // Special rat properties
+        if (type === 'rat') {
+            this.hasInitiative = true; // Always wins initiative
+            this.poxChance = 0.20; // 20% chance to apply pox on hit
         }
     }
 }

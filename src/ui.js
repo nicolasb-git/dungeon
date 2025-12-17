@@ -124,6 +124,10 @@ export class UI {
                         span.classList.add('starving');
                     }
 
+                    if (player.isPoxed && player.isPoxed()) {
+                        span.classList.add('poxed');
+                    }
+
                     tileEl.appendChild(span);
 
                     // Also clear FOW on player tile visually so it's not dark
@@ -304,6 +308,15 @@ export class UI {
             icon.className = 'status-icon invulnerable';
             icon.textContent = '🛡️';
             icon.title = 'Invulnerable';
+            this.statusEffects.appendChild(icon);
+        }
+
+        // Check for Pox
+        if (player.isPoxed && player.isPoxed()) {
+            const icon = document.createElement('span');
+            icon.className = 'status-icon poxed';
+            icon.textContent = '🦠';
+            icon.title = 'Pox (Power Halved)';
             this.statusEffects.appendChild(icon);
         }
     }

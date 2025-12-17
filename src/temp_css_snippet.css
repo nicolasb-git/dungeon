@@ -1,20 +1,12 @@
-.entity-player.invulnerable {
-    animation: pulse-blue 1s infinite;
-    box-shadow: 0 0 10px 2px #00ffff;
-    /* Blue Glow */
-    background-color: rgba(0, 255, 255, 0.3);
+/* Pox Effect - Purple Glow */
+.poxed {
+    box-shadow: 0 0 8px 4px #9b59b6;
+    border-radius: 50%;
+    background-color: rgba(155, 89, 182, 0.3);
 }
 
-@keyframes pulse-blue {
-    0% {
-        box-shadow: 0 0 10px 2px #00ffff;
-    }
-
-    50% {
-        box-shadow: 0 0 20px 5px #00ffff;
-    }
-
-    100% {
-        box-shadow: 0 0 10px 2px #00ffff;
-    }
+/* Status Icon for Pox */
+.status-icon.poxed {
+    color: #9b59b6;
+    border-color: #9b59b6;
 }
