@@ -103,6 +103,7 @@ export class Player extends Actor {
         this.perks = charClass.perks;
 
         this.maxStamina = stats.maxStamina;
+        this.stamina = stats.stamina;
 
         this.inventory = [];
         this.xp = 0;
@@ -345,9 +346,11 @@ export class Item extends Entity {
         } else if (type === 'potion') {
             symbol = '🧪';
             name = 'Health Potion';
-            symbol = '🧪';
-            name = 'Health Potion';
             value = 30; // Healing amount
+        } else if (type === 'potion_clarity') {
+            symbol = '🧪';
+            name = 'Clarity Potion';
+            value = 0; // No effect implemented yet, but fixes the name
         } else if (type === 'gem') {
             symbol = '💎';
             name = 'Invulnerability Gem';

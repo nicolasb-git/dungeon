@@ -196,7 +196,8 @@ export class Game {
                 grid: this.map.grid,
                 rooms: this.map.rooms,
                 explored: this.map.explored,
-                entities: this.map.entities
+                entities: this.map.entities,
+                fullyRevealed: this.map.fullyRevealed
             },
             depth: this.depth
         };
@@ -224,6 +225,7 @@ export class Game {
                 this.map.grid = state.map.grid;
                 this.map.rooms = state.map.rooms || [];
                 this.map.explored = state.map.explored;
+                this.map.fullyRevealed = state.map.fullyRevealed || false;
 
                 // Rehydrate Entities
                 this.map.entities = state.map.entities.map(e => {
@@ -257,9 +259,15 @@ export class Game {
                 // MIGRATION: Old saves have 'power', new needs 'basePower'
                 this.player.basePower = state.player.basePower !== undefined ? state.player.basePower : (state.player.power || 10);
 
-                this.player.inventory = state.player.inventory;
+                this.player.inventory = state.player.inventory.map(item => {
+                    // MIGRATION: Fix name for clarity potions in old saves
+                    if (item.itemType === 'potion_clarity') {
+                        item.name = 'Clarity Potion';
+                        item.symbol = '🧪';
+                    }
+                    return item;
+                });
                 this.player.equipment = state.player.equipment || this.player.equipment; // Load equip if exists
-
                 this.player.xp = state.player.xp || 0;
                 this.player.level = state.player.level || 1;
                 this.player.nextLevelXp = state.player.nextLevelXp || 50;
@@ -314,6 +322,7 @@ export class Game {
         if (viewport) {
             availW = viewport.clientWidth;
             availH = viewport.clientHeight;
+            // console.log("DEBUG: Viewport dimensions:", availW, availH);
         }
 
         // Compute tiles based on ~32px sizing
@@ -324,6 +333,8 @@ export class Game {
         // Ensure minimum playability, but NO MAX limit (fill the screen!)
         cols = Math.max(20, cols);
         rows = Math.max(15, rows);
+
+        console.log(`DEBUG: SetupLevel calculated map size: ${cols}x${rows} (from viewport ${availW}x${availH})`);
 
         // Pad slightly to avoid edge gluing
         cols -= 2;
@@ -943,14 +954,16 @@ export class Game {
 
     generateLoot() {
         const roll = Math.random();
-        if (roll < 0.1) {
+        if (roll < 0.10) { // 10%
             return this.createEquipmentDrop();
-        } else if (roll < 0.5) {
+        } else if (roll < 0.50) { // 40% (0.1 to 0.5)
             return this.createGoldDrop();
-        } else if (roll < 0.8) {
+        } else if (roll < 0.80) { // 30% (0.5 to 0.8)
             return new Item(0, 0, 'food');
-        } else {
+        } else if (roll < 0.95) { // 15% (0.8 to 0.95)
             return new Item(0, 0, 'potion');
+        } else { // 5% (0.95 to 1.0)
+            return new Item(0, 0, 'potion_clarity');
         }
     }
 
@@ -1043,6 +1056,35 @@ export class Game {
             }
             this.render();
             this.saveGame();
+        } else if (item.itemType === 'potion_clarity') {
+            this.ui.log(`You drank the Clarity Potion. The dungeon layout is revealed!`, "good");
+
+            this.map.fullyRevealed = true;
+
+            let cured = false;
+            // Dispel Pox
+            if (this.player.isPoxed()) {
+                this.player.poxedTurns = 0;
+                this.ui.log("The pox has been cured!", "good");
+                cured = true;
+            }
+            // Dispel Paralysis
+            if (this.player.isParalyzed && this.player.isParalyzed()) {
+                this.player.paralyzedTurns = 0;
+                this.ui.log("You can move freely again!", "good");
+                cured = true;
+            }
+
+            if (!cured) {
+                this.ui.log("It tastes like water...", "info");
+            }
+
+            item.quantity--;
+            if (item.quantity <= 0) {
+                this.player.inventory = this.player.inventory.filter(i => i !== item);
+            }
+            this.render();
+            this.saveGame();
         } else if (item.itemType === 'gem') {
             this.ui.log(`You used the ${item.name} and feel INVINCIBLE!`, "good");
             this.player.addInvulnerability(item.value);
@@ -1100,7 +1142,18 @@ export class Game {
     }
 
     render() {
-        const fov = this.computeFOV(this.player.x, this.player.y, 3); // Radius 3
+        let fov;
+        if (this.map.fullyRevealed) {
+            fov = new Set();
+            for (let y = 0; y < this.map.height; y++) {
+                for (let x = 0; x < this.map.width; x++) {
+                    fov.add(`${x},${y}`);
+                }
+            }
+        } else {
+            fov = this.computeFOV(this.player.x, this.player.y, 3); // Radius 3
+        }
+
         this.ui.drawMap(this.map, this.player, fov);
         this.ui.updateStats(this.player, this.depth);
         this.ui.updateStats(this.player, this.depth);

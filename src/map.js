@@ -39,19 +39,19 @@ export class GameMap {
         // We pick a random size between min(6) and leaf size.
         for (const leaf of leafs) {
             // Randomize room size within leaf
-            // Ensure at least 4x4 or so
-            const minSize = 4;
+            // Ensure at least 3x3 or so
+            const minSize = 3;
 
             // Random width between min and (leaf.w - 2)
             // We leave padding for walls/corridors
-            const rw = Math.floor(Math.random() * (leaf.w - minSize - 2)) + minSize;
-            const rh = Math.floor(Math.random() * (leaf.h - minSize - 2)) + minSize;
+            const rw = Math.floor(Math.random() * (leaf.w - minSize - 1)) + minSize;
+            const rh = Math.floor(Math.random() * (leaf.h - minSize - 1)) + minSize;
 
             // Center the room roughly or random position
             const rx = Math.floor(Math.random() * (leaf.w - rw - 1)) + leaf.x + 1;
             const ry = Math.floor(Math.random() * (leaf.h - rh - 1)) + leaf.y + 1;
 
-            if (rw > 2 && rh > 2) {
+            if (rw > 1 && rh > 1) {
                 const room = { x: rx, y: ry, w: rw, h: rh };
                 this.createRoom(room);
                 this.rooms.push(room);
@@ -81,20 +81,20 @@ export class GameMap {
 
     splitSpace(rect, leafs) {
         // Stop if too small
-        if (rect.w < 8 || rect.h < 8) { // Minimum partition size
+        if (rect.w < 6 || rect.h < 6) { // Minimum partition size (Reduced to 6)
             leafs.push(rect);
             return;
         }
 
         // Split logic
         const splitH = Math.random() > 0.5;
-        const max = (splitH ? rect.h : rect.w) - 4; // Minus min size
-        if (max < 4) {
+        const max = (splitH ? rect.h : rect.w) - 3; // Minus min size
+        if (max < 3) {
             leafs.push(rect);
             return;
         }
 
-        const split = Math.floor(Math.random() * (max - 4)) + 4; // Split point
+        const split = Math.floor(Math.random() * (max - 3)) + 3; // Split point
 
         if (splitH) {
             // Horizontal split (Top / Bottom)

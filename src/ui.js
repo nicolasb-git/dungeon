@@ -81,6 +81,13 @@ export class UI {
     }
 
     drawMap(map, player, fov) {
+        // SAFETY: If Map dimensions differ from Grid dimensions, re-init!
+        if (map.width !== this.gridWidth || map.height !== this.gridHeight) {
+            console.warn(`Dimension mismatch: Map ${map.width}x${map.height} vs Grid ${this.gridWidth}x${this.gridHeight}. Re-initializing.`);
+            this.initGrid(map.width, map.height);
+        }
+
+        let renderedEntities = 0;
         for (let y = 0; y < map.height; y++) {
             for (let x = 0; x < map.width; x++) {
                 const index = y * map.width + x;
@@ -98,6 +105,7 @@ export class UI {
 
                 // DEBUG: RENDER PLAYER ALWAYS
                 if (player.x === x && player.y === y) {
+                    // ... (existing player render code)
                     const span = document.createElement('span');
                     span.textContent = player.symbol;
                     span.className = 'entity-player';
@@ -148,6 +156,7 @@ export class UI {
                         span.textContent = entity.symbol;
                         span.className = `entity-${entity.type}`;
                         tileEl.appendChild(span);
+                        renderedEntities++;
                     }
                 } else if (isExplored) {
                     // Explored but hidden (Fog)
@@ -163,6 +172,7 @@ export class UI {
                 }
             }
         }
+        console.log(`DEBUG: drawMap finished. Rendered ${renderedEntities} entities. FOV size: ${fov ? fov.size : 'null'}`);
     }
 
     updateStats(player, depth) {
@@ -219,12 +229,12 @@ export class UI {
                 text = `<span>${item.symbol} ${item.name}</span> <span class="highlight">${item.value}</span>`;
             } else {
                 text = `<span>${item.symbol} ${item.name} (x${item.quantity})</span>`;
-                if (item.itemType === 'food' || item.itemType === 'potion' || item.itemType === 'gem' || item.itemType === 'equipment') {
+                if (item.itemType === 'food' || item.itemType === 'potion' || item.itemType === 'potion_clarity' || item.itemType === 'gem' || item.itemType === 'equipment') {
                     // Create consumption button
                     const btn = document.createElement('button');
                     let btnText = "Use";
                     if (item.itemType === 'food') btnText = "Eat";
-                    if (item.itemType === 'potion') btnText = "Drink";
+                    if (item.itemType === 'potion' || item.itemType === 'potion_clarity') btnText = "Drink";
                     if (item.itemType === 'equipment') btnText = "Equip";
 
                     btn.textContent = btnText;
