@@ -249,6 +249,18 @@ header h1 {
     color: var(--health-color);
 }
 
+.entity-potion {
+    color: var(--health-color);
+    /* Red */
+    filter: drop-shadow(0 0 2px var(--health-color));
+}
+
+.entity-potion_clarity {
+    color: #4db6ac;
+    /* Cyan/Teal */
+    filter: drop-shadow(0 0 2px #4db6ac);
+}
+
 .entity-player.starving {
     background-color: rgba(210, 153, 34, 0.5);
     /* Orange */

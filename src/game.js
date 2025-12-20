@@ -263,7 +263,7 @@ export class Game {
                     // MIGRATION: Fix name for clarity potions in old saves
                     if (item.itemType === 'potion_clarity') {
                         item.name = 'Clarity Potion';
-                        item.symbol = '🧪';
+                        item.symbol = '🏺';
                     }
                     return item;
                 });

@@ -348,7 +348,7 @@ export class Item extends Entity {
             name = 'Health Potion';
             value = 30; // Healing amount
         } else if (type === 'potion_clarity') {
-            symbol = '🧪';
+            symbol = '🏺';
             name = 'Clarity Potion';
             value = 0; // No effect implemented yet, but fixes the name
         } else if (type === 'gem') {
