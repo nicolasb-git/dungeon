@@ -96,14 +96,13 @@ export class Player extends Actor {
         const charClass = CLASSES[classKey] || CLASSES['warrior'];
         const stats = charClass.stats;
 
+        // Call super first!
         super(x, y, '🤺', 'player', charClass.name, stats.life, stats.power);
 
         this.classKey = classKey;
         this.perks = charClass.perks;
 
         this.maxStamina = stats.maxStamina;
-        this.stamina = stats.stamina;
-        this.maxLife = stats.maxLife; // Ensure maxLife is set from config
 
         this.inventory = [];
         this.xp = 0;

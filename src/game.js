@@ -11,6 +11,41 @@ export class Game {
         // Bind Inputs
         document.addEventListener('keydown', (e) => this.handleInput(e));
         document.getElementById('reset-btn').addEventListener('click', () => this.resetGame());
+
+        // Ensure scoreboard key exists
+        if (!localStorage.getItem('mud_scoreboard')) {
+            localStorage.setItem('mud_scoreboard', JSON.stringify([]));
+        }
+    }
+
+    getHighScores() {
+        try {
+            return JSON.parse(localStorage.getItem('mud_scoreboard')) || [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    saveScore(name, score, depth, killedBy, className) {
+        const scores = this.getHighScores();
+        scores.push({
+            name,
+            score,
+            depth,
+            killedBy,
+            class: className,
+            date: new Date().toLocaleDateString()
+        });
+        // Sort by score desc
+        scores.sort((a, b) => b.score - a.score);
+        localStorage.setItem('mud_scoreboard', JSON.stringify(scores));
+    }
+
+    resetScores() {
+        if (confirm("Are you sure you want to wipe the scoreboard? This cannot be undone.")) {
+            localStorage.removeItem('mud_scoreboard');
+            this.handleCharacterSelection(); // Refresh UI
+        }
     }
 
     resetGame() {
@@ -93,6 +128,47 @@ export class Game {
 
             grid.appendChild(card);
         });
+
+        // SCOREBOARD INJECTION
+        const scores = this.getHighScores();
+        let scoreboardHtml = `
+            <div class="scoreboard-container">
+                <h3>HALL OF HEROES</h3>
+                <div class="scoreboard-scroll">
+        `;
+
+        if (scores.length === 0) {
+            scoreboardHtml += `<div class="score-entry">No heroes yet...</div>`;
+        } else {
+            scores.forEach((s, i) => {
+                scoreboardHtml += `
+                    <div class="score-entry">
+                        <span class="rank">#${i + 1}</span>
+                        <span class="name">${s.name}</span>
+                        <span class="details">Depth ${s.depth || 1} (Score: ${s.score})</span>
+                        <span class="details">${s.class || 'Hero'} - ${s.date || 'Unknown Date'}</span>
+                        <span class="cause">† ${s.killedBy || 'Unknown'}</span>
+                    </div>
+                `;
+            });
+        }
+
+        scoreboardHtml += `
+                </div>
+                <button id="reset-scores-btn" class="danger-btn" style="margin-top:10px; width:auto; padding: 5px 10px; font-size: 0.8rem;">Reset Board</button>
+            </div>
+        `;
+
+        // Check if scoreboard already exists to prevent duplication if re-rendering
+        const existingBoard = document.getElementById('scoreboard-overlay');
+        if (existingBoard) existingBoard.remove();
+
+        const boardDiv = document.createElement('div');
+        boardDiv.id = 'scoreboard-overlay';
+        boardDiv.innerHTML = scoreboardHtml;
+        screen.appendChild(boardDiv);
+
+        document.getElementById('reset-scores-btn').onclick = () => this.resetScores();
     }
 
     // ---------------- SAVE / LOAD ---------------- //
@@ -111,7 +187,8 @@ export class Game {
                 level: this.player.level,
                 nextLevelXp: this.player.nextLevelXp,
                 maxLife: this.player.maxLife,
-                classKey: this.player.classKey
+                classKey: this.player.classKey,
+                className: this.player.className
             },
             map: {
                 width: this.map.width,
@@ -186,6 +263,11 @@ export class Game {
                 this.player.xp = state.player.xp || 0;
                 this.player.level = state.player.level || 1;
                 this.player.nextLevelXp = state.player.nextLevelXp || 50;
+                this.player.maxLife = state.player.maxLife;
+                this.player.classKey = state.player.classKey;
+                this.player.className = state.player.className || (CLASSES[state.player.classKey] ? CLASSES[state.player.classKey].name : "Hero");
+
+                // Rehydrate Inventory
                 if (state.player.maxLife) this.player.maxLife = state.player.maxLife;
 
                 this.depth = state.depth || 1;
@@ -918,8 +1000,21 @@ export class Game {
     death(cause) {
         this.ui.log("You have died.", "combat");
         this.render();
-        this.saveGame(); // Save death state
-        this.ui.showGameOver(cause || "You were slain in the dungeon.", () => this.resetGame());
+        // Remove save game so they can't resume a dead char
+        localStorage.removeItem(this.storageKey);
+
+        const score = Math.max(0, this.depth - 1);
+
+        this.ui.showGameOver(cause || "You were slain in the dungeon.", score, (name) => {
+            if (name) {
+                let className = "Unknown";
+                if (this.player) {
+                    className = this.player.className || (CLASSES[this.player.classKey] ? CLASSES[this.player.classKey].name : "Hero");
+                }
+                this.saveScore(name, score, this.depth, cause, className);
+            }
+            this.resetGame();
+        });
     }
 
     useItem(item) {

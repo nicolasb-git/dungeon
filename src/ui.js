@@ -245,14 +245,47 @@ export class UI {
         });
     }
 
-    showGameOver(message, onRestart) {
+    showGameOver(message, score, onRestart) {
         this.messageOverlay.style.display = 'flex';
-        this.modalTitle.textContent = "Game Over";
-        this.modalMsg.textContent = message;
-        this.modalBtn.onclick = () => {
+        this.modalTitle.textContent = "You Have Died";
+
+        this.modalMsg.innerHTML = `
+            <p style="color:var(--text-muted); margin-bottom:1rem;">${message}</p>
+            <p style="font-size:1.5rem; color:var(--accent-color); margin-bottom:1rem;">SCORE: ${score}</p>
+            <div style="margin: 1rem 0;">
+                <input type="text" id="hero-name" placeholder="Enter your name" maxlength="12" style="
+                    padding:0.5rem; 
+                    font-family:var(--font-heading); 
+                    font-size:1.2rem; 
+                    background: #000; 
+                    color:white; 
+                    border:1px solid #555; 
+                    text-align:center;
+                ">
+            </div>
+        `;
+
+        this.modalBtn.textContent = "Submit & Restart";
+
+        const submitHandler = () => {
+            const nameInput = document.getElementById('hero-name');
+            const name = nameInput ? nameInput.value.trim() : "Anonymous";
             this.messageOverlay.style.display = 'none';
-            onRestart();
+            if (onRestart) onRestart(name || "Anonymous");
         };
+
+        this.modalBtn.onclick = submitHandler;
+
+        // Auto focus & Enter key
+        setTimeout(() => {
+            const input = document.getElementById('hero-name');
+            if (input) {
+                input.focus();
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') submitHandler();
+                });
+            }
+        }, 100);
     }
 
     updateEquipment(player, onSlotClick) {
