@@ -38,6 +38,12 @@ export class Game {
         });
         // Sort by score desc
         scores.sort((a, b) => b.score - a.score);
+
+        // Limit to top 10
+        if (scores.length > 10) {
+            scores.splice(10);
+        }
+
         localStorage.setItem('mud_scoreboard', JSON.stringify(scores));
     }
 
@@ -1018,8 +1024,20 @@ export class Game {
 
         const score = Math.max(0, this.depth - 1);
 
-        this.ui.showGameOver(cause || "You were slain in the dungeon.", score, (name) => {
-            if (name) {
+        // Check High Score Eligibility
+        const scores = this.getHighScores();
+        let isHighScore = false;
+        if (scores.length < 10) {
+            isHighScore = true;
+        } else {
+            const lowest = scores[scores.length - 1].score;
+            if (score > lowest) {
+                isHighScore = true;
+            }
+        }
+
+        this.ui.showGameOver(cause || "You were slain in the dungeon.", score, isHighScore, (name) => {
+            if (name && isHighScore) {
                 let className = "Unknown";
                 if (this.player) {
                     className = this.player.className || (CLASSES[this.player.classKey] ? CLASSES[this.player.classKey].name : "Hero");

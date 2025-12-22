@@ -255,14 +255,15 @@ export class UI {
         });
     }
 
-    showGameOver(message, score, onRestart) {
+    showGameOver(message, score, isHighScore, onRestart) {
         this.messageOverlay.style.display = 'flex';
         this.modalTitle.textContent = "You Have Died";
 
-        this.modalMsg.innerHTML = `
-            <p style="color:var(--text-muted); margin-bottom:1rem;">${message}</p>
-            <p style="font-size:1.5rem; color:var(--accent-color); margin-bottom:1rem;">SCORE: ${score}</p>
+        let inputHtml = "";
+        if (isHighScore) {
+            inputHtml = `
             <div style="margin: 1rem 0;">
+                <p style="color:#56d364; font-size:0.9rem; margin-bottom:0.5rem;">NEW HIGH SCORE!</p>
                 <input type="text" id="hero-name" placeholder="Enter your name" maxlength="12" style="
                     padding:0.5rem; 
                     font-family:var(--font-heading); 
@@ -272,30 +273,43 @@ export class UI {
                     border:1px solid #555; 
                     text-align:center;
                 ">
-            </div>
+            </div>`;
+        } else {
+            inputHtml = `<div style="margin: 1rem 0; color:var(--text-muted); font-size:0.9rem;">You did not make the Hall of Heroes.</div>`;
+        }
+
+        this.modalMsg.innerHTML = `
+            <p style="color:var(--text-muted); margin-bottom:1rem;">${message}</p>
+            <p style="font-size:1.5rem; color:var(--accent-color); margin-bottom:1rem;">SCORE: ${score}</p>
+            ${inputHtml}
         `;
 
-        this.modalBtn.textContent = "Submit & Restart";
+        this.modalBtn.textContent = isHighScore ? "Submit & Restart" : "Restart";
 
         const submitHandler = () => {
-            const nameInput = document.getElementById('hero-name');
-            const name = nameInput ? nameInput.value.trim() : "Anonymous";
+            let name = "Anonymous";
+            if (isHighScore) {
+                const nameInput = document.getElementById('hero-name');
+                name = nameInput ? nameInput.value.trim() : "Anonymous";
+            }
             this.messageOverlay.style.display = 'none';
-            if (onRestart) onRestart(name || "Anonymous");
+            if (onRestart) onRestart(isHighScore ? (name || "Anonymous") : null);
         };
 
         this.modalBtn.onclick = submitHandler;
 
         // Auto focus & Enter key
-        setTimeout(() => {
-            const input = document.getElementById('hero-name');
-            if (input) {
-                input.focus();
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') submitHandler();
-                });
-            }
-        }, 100);
+        if (isHighScore) {
+            setTimeout(() => {
+                const input = document.getElementById('hero-name');
+                if (input) {
+                    input.focus();
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') submitHandler();
+                    });
+                }
+            }, 100);
+        }
     }
 
     updateEquipment(player, onSlotClick) {
