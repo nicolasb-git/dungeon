@@ -39,10 +39,26 @@ export const CLASSES = {
         perks: {
             lifePerLevel: 10,
             powerPerLevel: 5,
-            staminaCost: 0.7
+            staminaCost: 0.8
         },
         description: "A cunning rogue who moves swiftly but is less durable.",
         image: "./thief.png"
+    }, sorcerer: {
+        name: "Sorcerer",
+        stats: {
+            life: 80,
+            maxLife: 80,
+            power: 15,
+            stamina: 100,
+            maxStamina: 100
+        },
+        perks: {
+            lifePerLevel: 5,
+            powerPerLevel: 10,
+            staminaCost: 1.2
+        },
+        description: "A powerful sorcerer with high power but low durability.",
+        image: "./sorcerer.png"
     }
 };
 
