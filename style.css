@@ -1,22 +1,37 @@
 :root {
+    /* Color Palette */
     --bg-dark: #0f1115;
     --bg-panel: #161b22;
     --accent-color: #d4a373;
     /* Gold/Bronze */
     --accent-glow: rgba(212, 163, 115, 0.2);
+    --primary-color: #d4a373;
+    /* Aligning with accent-color */
+
     --text-main: #e6edf3;
     --text-muted: #8b949e;
+    --text-dim: #6e7681;
     --border-color: #30363d;
+
+    /* Stat Colors */
     --health-color: #f85149;
     --stamina-color: #d29922;
     --power-color: #58a6ff;
+    --hunger-color: #d29922;
 
+    /* Effect Colors */
+    --paralysis-color: #00ff00;
+    --invulnerable-color: #00ffff;
+    --pox-color: #9b59b6;
+
+    /* Typography */
     --font-heading: 'Cinzel', serif;
     --font-body: 'Outfit', sans-serif;
 
     --grid-size: 32px;
 }
 
+/* 1. BASE & UTILS */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -33,6 +48,21 @@ body {
     flex-direction: column;
 }
 
+.hidden {
+    display: none !important;
+}
+
+.highlight {
+    color: var(--accent-color);
+}
+
+.flavor-text {
+    font-style: italic;
+    color: var(--text-dim);
+    margin-top: 1rem;
+}
+
+/* 2. LAYOUT COMPONENTS */
 .app-container {
     height: 100%;
     display: flex;
@@ -78,17 +108,161 @@ header h1 {
     flex-direction: column;
     gap: 1rem;
     flex-shrink: 0;
-    /* Prevent squashing */
 }
 
-/* Stats */
+/* 3. GAME WORLD (GRID, TILES, FOG) */
+.viewport-container {
+    flex: 1;
+    background: #000;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.game-grid {
+    display: grid;
+    gap: 0;
+    background-color: #222;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    margin: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    image-rendering: pixelated;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: geometricPrecision;
+}
+
+.tile {
+    width: 100%;
+    height: 100%;
+    background-color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    position: relative;
+    cursor: default;
+    user-select: none;
+}
+
+.tile.wall {
+    background-color: #555;
+    border: 1px solid #333;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.tile.floor {
+    background-color: #1a1a1a;
+}
+
+.tile.visited {
+    background-color: #222;
+}
+
+.fog-explored {
+    opacity: 0.3;
+    filter: grayscale(100%);
+}
+
+.fog-unexplored {
+    background-color: #000 !important;
+    border: none;
+    box-shadow: none;
+}
+
+/* 4. ENTITIES & EFFECTS */
+.entity-player {
+    z-index: 10;
+    animation: bounce 1s infinite;
+}
+
+.entity-monster {
+    z-index: 5;
+    color: var(--health-color);
+}
+
+.entity-treasure {
+    color: var(--accent-color);
+    animation: pulse 2s infinite;
+}
+
+.entity-potion {
+    color: var(--health-color);
+    filter: drop-shadow(0 0 2px var(--health-color));
+}
+
+.entity-potion_clarity {
+    color: #4db6ac;
+    filter: drop-shadow(0 0 2px #4db6ac);
+}
+
+/* Player States */
+.entity-player.invulnerable {
+    --glow-color: var(--invulnerable-color);
+    animation: bounce 1s infinite, pulse-glow 1s infinite;
+}
+
+.entity-player.paralyzed {
+    --glow-color: var(--paralysis-color);
+    animation: bounce 1s infinite, pulse-glow 1s infinite;
+}
+
+.entity-player.poxed {
+    --glow-color: var(--pox-color);
+    animation: bounce 1s infinite, pulse-glow 1s infinite;
+}
+
+.entity-player.critical {
+    --flash-color: var(--health-color);
+    animation: bounce 1s infinite, flash-status 0.3s infinite;
+}
+
+.entity-player.starving {
+    --flash-color: var(--hunger-color);
+    animation: bounce 1s infinite, flash-status 0.5s infinite;
+}
+
+/* Debug Highlights */
+.highlight-monster,
+.highlight-treasure,
+.highlight-stairs {
+    color: white;
+    border: 1px solid white;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.highlight-monster {
+    background: #d32f2f;
+}
+
+.highlight-treasure {
+    background: #fbc02d;
+    color: black;
+}
+
+.highlight-stairs {
+    background: #00acc1;
+}
+
+/* 5. HUD / UI PANELS */
 .stat-block {
     display: flex;
     flex-direction: column;
     gap: 0.8rem;
 }
 
-.stat-row {
+.stat-row,
+.stat-info {
     display: flex;
     justify-content: space-between;
     font-size: 0.9rem;
@@ -96,8 +270,6 @@ header h1 {
 }
 
 .stat-info {
-    display: flex;
-    justify-content: space-between;
     font-size: 0.85rem;
     margin-bottom: 4px;
     color: var(--text-main);
@@ -117,7 +289,11 @@ header h1 {
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
-/* Specific colors */
+.progress-bar div {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
 .flat-red div {
     background-color: var(--health-color);
 }
@@ -130,11 +306,6 @@ header h1 {
     background-color: var(--power-color);
 }
 
-.progress-bar div {
-    height: 100%;
-    transition: width 0.3s ease;
-}
-
 .stat-value-large {
     font-size: 1.5rem;
     font-weight: bold;
@@ -142,154 +313,12 @@ header h1 {
     text-align: right;
 }
 
-.highlight {
-    color: var(--accent-color);
-}
-
-
-/* Viewport / Grid */
-.viewport-container {
-    flex: 1;
-    background: #000;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    /* Safe to keep frame rounded, but content is square */
-    position: relative;
-    overflow: hidden;
-    /* No scrollbars! Fit to screen. */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    /* Padding frame */
-    /* REMOVED VIGNETTE SHADOW causing blur at edges */
-    box-shadow: none;
-}
-
-.game-grid {
-    display: grid;
-    /* Grid template columns/rows set by JS */
-    gap: 0;
-    background-color: #222;
-
-    /* FIX: Maintain aspect ratio of map (30/20) so tiles are square */
-    /* Handled by JS inline style now for dynamic support */
-    /* aspect-ratio: 30 / 20; */
-
-    /* Grow as big as possible without overflowing */
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
-
-    /* If container is wider than 3:2, height constrains it. If taller, width constrains it. */
-    margin: auto;
-
-    /* CRISP TEXT SETTINGS */
-    font-family: 'Courier New', Courier, monospace;
-    /* Monospace is sharper */
-    font-weight: bold;
-    image-rendering: pixelated;
-    -webkit-font-smoothing: none;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: geometricPrecision;
-}
-
-.tile {
-    /* Dimensions handled by grid 1fr */
-    width: 100%;
-    height: 100%;
-    background-color: #1a1a1a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    /* Revert to fixed size or keep responsive? Fixed is safer for "consistent blocks" */
-    position: relative;
-    cursor: default;
-    user-select: none;
-}
-
-.tile.wall {
-    background-color: #555;
-    /* Lighter grey for visibility */
-    border: 1px solid #333;
-    /* Slight border definition */
-    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
-}
-
-.tile.floor {
-    background-color: #1a1a1a;
-}
-
-.tile.visited {
-    background-color: #222;
-}
-
-.fog-explored {
-    opacity: 0.3;
-    /* Make it dark */
-    filter: grayscale(100%);
-}
-
-.fog-unexplored {
-    background-color: #000 !important;
-    border: none;
-    box-shadow: none;
-}
-
-/* Entities */
-.entity-player {
-    z-index: 10;
-    animation: bounce 1s infinite;
-}
-
-.entity-monster {
-    z-index: 5;
-    color: var(--health-color);
-}
-
-.entity-potion {
-    color: var(--health-color);
-    /* Red */
-    filter: drop-shadow(0 0 2px var(--health-color));
-}
-
-.entity-potion_clarity {
-    color: #4db6ac;
-    /* Cyan/Teal */
-    filter: drop-shadow(0 0 2px #4db6ac);
-}
-
-.entity-player.starving {
-    background-color: rgba(210, 153, 34, 0.5);
-    /* Orange */
-    box-shadow: 0 0 0 2px var(--hunger-color);
-    animation: flash-hunger 0.5s infinite;
-}
-
-@keyframes flash-hunger {
-
-    0%,
-    100% {
-        background-color: rgba(210, 153, 34, 0.3);
-    }
-
-    50% {
-        background-color: rgba(210, 153, 34, 0.7);
-    }
-}
-
-/* Status Effects Display */
+/* Status Icons */
 .stats-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
-}
-
-.stats-header h2 {
-    margin: 0;
 }
 
 .status-effects {
@@ -308,152 +337,60 @@ header h1 {
 }
 
 .status-icon.paralyzed {
-    background: rgba(0, 255, 0, 0.2);
-    border-color: #00ff00;
+    color: var(--paralysis-color);
+    border-color: var(--paralysis-color);
+    background: rgba(0, 255, 0, 0.1);
 }
 
 .status-icon.invulnerable {
-    background: rgba(0, 255, 255, 0.2);
-    border-color: #00ffff;
+    color: var(--invulnerable-color);
+    border-color: var(--invulnerable-color);
+    background: rgba(0, 255, 255, 0.1);
 }
 
-@keyframes pulse-status {
-
-    0%,
-    100% {
-        opacity: 0.8;
-        transform: scale(1);
-    }
-
-    50% {
-        opacity: 1;
-        transform: scale(1.1);
-    }
+.status-icon.poxed {
+    color: var(--pox-color);
+    border-color: var(--pox-color);
+    background: rgba(155, 89, 182, 0.1);
 }
 
-.entity-player.critical {
-    background-color: rgba(248, 81, 73, 0.5);
-    /* Red */
-    box-shadow: 0 0 0 2px var(--health-color);
-    animation: flash-health 0.3s infinite;
-}
-
-@keyframes flash-health {
-
-    0%,
-    100% {
-        background-color: rgba(248, 81, 73, 0.3);
-    }
-
-    50% {
-        background-color: rgba(248, 81, 73, 0.7);
-    }
-}
-
-.entity-treasure {
-    color: var(--accent-color);
-    animation: pulse 2s infinite;
-}
-
-/* DEBUG HIGHLIGHTS - SOLID PIXEL STYLE */
-.highlight-monster {
-    background: #d32f2f;
-    /* Solid Red */
-    color: white;
-    border: 1px solid white;
-    border-radius: 0;
-    /* Square */
-    box-shadow: none;
-}
-
-.highlight-treasure {
-    background: #fbc02d;
-    /* Solid Gold */
-    color: black;
-    border: 1px solid white;
-    border-radius: 0;
-    box-shadow: none;
-}
-
-.highlight-stairs {
-    background: #00acc1;
-    /* Solid Cyan */
-    color: white;
-    border: 1px solid white;
-    border-radius: 0;
-    box-shadow: none;
-}
-
-@keyframes bounce {
-
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-2px);
-    }
-}
-
-@keyframes pulse {
-    0% {
-        opacity: 0.7;
-        /* transform: scale(0.9); REMOVED CAUSES BLUR */
-    }
-
-    50% {
-        opacity: 1;
-        /* transform: scale(1.1); REMOVED CAUSES BLUR */
-    }
-
-    100% {
-        opacity: 0.7;
-        /* transform: scale(0.9); REMOVED CAUSES BLUR */
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(5px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Log */
-.log-block {
+/* Log & Inventory */
+.log-block,
+.inventory-block {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
 }
 
-.log-container {
+.log-container,
+.inventory-block ul {
     flex: 1;
     overflow-y: auto;
     font-size: 0.9rem;
-    color: var(--text-muted);
-    font-family: monospace;
-    display: flex;
-    flex-direction: column;
     scrollbar-width: thin;
     scrollbar-color: var(--border-color) var(--bg-panel);
 }
 
-.log-container::-webkit-scrollbar {
+.log-container {
+    color: var(--text-muted);
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+}
+
+.log-container::-webkit-scrollbar,
+.inventory-block ul::-webkit-scrollbar {
     width: 8px;
 }
 
-.log-container::-webkit-scrollbar-track {
+.log-container::-webkit-scrollbar-track,
+.inventory-block ul::-webkit-scrollbar-track {
     background: var(--bg-panel);
 }
 
-.log-container::-webkit-scrollbar-thumb {
+.log-container::-webkit-scrollbar-thumb,
+.inventory-block ul::-webkit-scrollbar-thumb {
     background-color: var(--border-color);
     border-radius: 4px;
 }
@@ -473,42 +410,13 @@ header h1 {
     color: var(--accent-color);
 }
 
-.log-entry.info {
-    color: var(--text-muted);
-}
-
 .log-entry.good {
     color: #56d364;
-}
-
-/* Inventory */
-.inventory-block {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
 }
 
 .inventory-block ul {
     list-style: none;
     padding: 0;
-    overflow-y: auto;
-    flex: 1;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-color) var(--bg-panel);
-}
-
-.inventory-block ul::-webkit-scrollbar {
-    width: 8px;
-}
-
-.inventory-block ul::-webkit-scrollbar-track {
-    background: var(--bg-panel);
-}
-
-.inventory-block ul::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
-    border-radius: 4px;
 }
 
 .inventory-block li {
@@ -518,23 +426,164 @@ header h1 {
     justify-content: space-between;
 }
 
+.item-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Buttons */
+.btn-primary,
+.danger-btn,
+.action-btn {
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: #000;
+    font-weight: 700;
+    padding: 1rem 2rem;
+    border: none;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    margin-top: 1rem;
+}
+
+.btn-primary:hover {
+    background: #fff;
+    box-shadow: 0 0 15px var(--primary-color);
+}
+
 .danger-btn {
     background: rgba(248, 81, 73, 0.1);
     border: 1px solid rgba(248, 81, 73, 0.4);
-    color: #f85149;
+    color: var(--health-color);
     padding: 0.5rem 1rem;
     width: 100%;
-    cursor: pointer;
-    border-radius: 4px;
-    font-family: var(--font-body);
-    transition: all 0.2s;
 }
 
 .danger-btn:hover {
     background: rgba(248, 81, 73, 0.2);
 }
 
-/* Overlay */
+.action-btn {
+    background: transparent;
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.action-btn:hover {
+    background: var(--accent-color);
+    color: #000;
+}
+
+.action-btn:hover {
+    background: var(--accent-color);
+    color: #000;
+}
+
+.equip-slot.spacer {
+    display: none;
+}
+
+/* Equipment Grid */
+.equipment-grid {
+    display: grid;
+    grid-template-areas:
+        ".        head     ."
+        "l_arm    chest    r_arm"
+        "l_weapon chest    r_weapon"
+        ".        pubis    ."
+        "l_leg    .        r_leg"
+        "l_shoe   .        r_shoe";
+    gap: 8px;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+.equip-slot {
+    width: 48px;
+    height: 48px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px dashed var(--text-muted);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    position: relative;
+    cursor: help;
+}
+
+.equip-slot:hover {
+    border-color: var(--accent-color);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.equip-slot[data-slot="head"] {
+    grid-area: head;
+}
+
+.equip-slot[data-slot="chest"] {
+    grid-area: chest;
+}
+
+.equip-slot[data-slot="l_arm"] {
+    grid-area: l_arm;
+}
+
+.equip-slot[data-slot="r_arm"] {
+    grid-area: r_arm;
+}
+
+.equip-slot[data-slot="l_weapon"] {
+    grid-area: l_weapon;
+}
+
+.equip-slot[data-slot="r_weapon"] {
+    grid-area: r_weapon;
+}
+
+.equip-slot[data-slot="pubis"] {
+    grid-area: pubis;
+}
+
+.equip-slot[data-slot="l_leg"] {
+    grid-area: l_leg;
+}
+
+.equip-slot[data-slot="r_leg"] {
+    grid-area: r_leg;
+}
+
+.equip-slot[data-slot="l_shoe"] {
+    grid-area: l_shoe;
+}
+
+.equip-slot[data-slot="r_shoe"] {
+    grid-area: r_shoe;
+}
+
+.equip-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: var(--accent-color);
+    color: #000;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+
+/* 6. SCREENS & OVERLAYS */
 .overlay {
     position: absolute;
     top: 0;
@@ -581,184 +630,7 @@ header h1 {
     background: #eac6a2;
 }
 
-.item-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.action-btn {
-    background: transparent;
-    border: 1px solid var(--accent-color);
-    color: var(--accent-color);
-    padding: 0.2rem 0.5rem;
-    cursor: pointer;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    transition: all 0.2s;
-}
-
-.action-btn:hover {
-    background: var(--accent-color);
-    color: #000;
-}
-
-.entity-player.invulnerable {
-    animation: pulse-blue 1s infinite;
-    box-shadow: 0 0 10px 2px #00ffff;
-    /* Blue Glow */
-    background-color: rgba(0, 255, 255, 0.3);
-}
-
-@keyframes pulse-blue {
-    0% {
-        box-shadow: 0 0 10px 2px #00ffff;
-    }
-
-    50% {
-        box-shadow: 0 0 20px 5px #00ffff;
-    }
-
-    100% {
-        box-shadow: 0 0 10px 2px #00ffff;
-    }
-}
-
-.entity-player.paralyzed {
-    animation: pulse-green 1s infinite;
-    box-shadow: 0 0 10px 2px #00ff00;
-    /* Green Glow */
-    background-color: rgba(0, 255, 0, 0.3);
-}
-
-@keyframes pulse-green {
-    0% {
-        box-shadow: 0 0 10px 2px #00ff00;
-    }
-
-    50% {
-        box-shadow: 0 0 20px 5px #00ff00;
-    }
-
-    100% {
-        box-shadow: 0 0 10px 2px #00ff00;
-    }
-}
-
-/* Equipment Grid */
-.equipment-grid {
-    display: grid;
-    grid-template-areas:
-        ".        head     ."
-        "l_arm    chest    r_arm"
-        "l_weapon chest    r_weapon"
-        ".        pubis    ."
-        "l_leg    .        r_leg"
-        "l_shoe   .        r_shoe";
-    gap: 8px;
-    margin-top: 1rem;
-    justify-content: center;
-}
-
-.equip-slot {
-    width: 48px;
-    height: 48px;
-    background-color: rgba(255, 255, 255, 0.05);
-    border: 1px dashed var(--text-muted);
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: var(--text-muted);
-    position: relative;
-    cursor: help;
-}
-
-.equip-slot:hover {
-    border-color: var(--accent-color);
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Map slots to areas */
-.equip-slot[data-slot="head"] {
-    grid-area: head;
-}
-
-.equip-slot[data-slot="chest"] {
-    grid-area: chest;
-}
-
-.equip-slot[data-slot="l_arm"] {
-    grid-area: l_arm;
-}
-
-.equip-slot[data-slot="r_arm"] {
-    grid-area: r_arm;
-}
-
-.equip-slot[data-slot="l_weapon"] {
-    grid-area: l_weapon;
-}
-
-.equip-slot[data-slot="r_weapon"] {
-    grid-area: r_weapon;
-}
-
-.equip-slot[data-slot="pubis"] {
-    grid-area: pubis;
-}
-
-.equip-slot[data-slot="l_leg"] {
-    grid-area: l_leg;
-}
-
-.equip-slot[data-slot="r_leg"] {
-    grid-area: r_leg;
-}
-
-.equip-slot[data-slot="l_shoe"] {
-    grid-area: l_shoe;
-}
-
-.equip-slot[data-slot="r_shoe"] {
-    grid-area: r_shoe;
-}
-
-.equip-slot.spacer {
-    display: none;
-}
-
-/* Hide spacers as they are not needed with areas */
-
-
-/* Empty placeholder styling if needed, or use content property */
-.equip-slot:empty::before {
-    content: attr(title);
-    /* Show title as placeholder? Too big. */
-    /* content: '?'; */
-    font-size: 0.7rem;
-    text-align: center;
-    opacity: 0.3;
-    display: none;
-    /* Hide text, just keep box */
-}
-
-/* Badge for +Power */
-.equip-badge {
-    position: absolute;
-    bottom: -4px;
-    right: -4px;
-    background: var(--accent-color);
-    color: #000;
-    font-size: 0.7rem;
-    font-weight: bold;
-    padding: 1px 3px;
-    border-radius: 3px;
-    font-family: var(--font-body);
-}
-
-/* WELCOME SCREEN - APPENDED */
+/* Welcome Screen */
 .screen-overlay {
     position: fixed;
     top: 0;
@@ -771,12 +643,11 @@ header h1 {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: var(--text-color);
     backdrop-filter: blur(10px);
 }
 
 .game-title {
-    font-family: 'Cinzel', serif;
+    font-family: var(--font-heading);
     font-size: 4rem;
     color: var(--primary-color);
     text-shadow: 0 0 20px var(--primary-color);
@@ -823,73 +694,12 @@ header h1 {
     font-size: 1.1rem;
 }
 
-/* Button & Other Utils */
-.btn-primary {
-    background: var(--primary-color);
-    color: #000;
-    font-weight: 700;
-    padding: 1rem 2rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1.2rem;
-    text-transform: uppercase;
-    transition: all 0.2s;
-    margin-top: 1rem;
-}
-
-.btn-primary:hover {
-    background: #fff;
-    box-shadow: 0 0 15px var(--primary-color);
-}
-
-.flavor-text {
-    font-style: italic;
-    color: var(--text-dim);
-    margin-top: 1rem;
-}
-
-.hidden {
-    display: none !important;
-}
-
-/* Pox Effect - Purple Glow (Matches Paralyzed style) */
-.entity-player.poxed {
-    animation: pulse-purple 1s infinite;
-    box-shadow: 0 0 10px 2px #9b59b6;
-    /* Purple Glow */
-    background-color: rgba(155, 89, 182, 0.3);
-}
-
-@keyframes pulse-purple {
-    0% {
-        box-shadow: 0 0 10px 2px #9b59b6;
-    }
-
-    50% {
-        box-shadow: 0 0 20px 5px #9b59b6;
-    }
-
-    100% {
-        box-shadow: 0 0 10px 2px #9b59b6;
-    }
-}
-
-/* Status Icon for Pox */
-.status-icon.poxed {
-    color: #9b59b6;
-    border-color: #9b59b6;
-    background: rgba(155, 89, 182, 0.2);
-}
-
-/* SCOREBOARD STYLES */
+/* Scoreboard */
 #scoreboard-overlay {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    /* Center Vertically */
     left: 20px;
-    /* Position to the left */
     width: 250px;
     height: 60vh;
     background: rgba(0, 0, 0, 0.6);
@@ -897,12 +707,10 @@ header h1 {
     border-radius: 8px;
     padding: 1rem;
     z-index: 100;
-    /* Behind modal? No, inside screen. */
     backdrop-filter: blur(2px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    /* Ensure clipping */
 }
 
 .scoreboard-container {
@@ -923,9 +731,7 @@ header h1 {
 .scoreboard-scroll {
     flex: 1;
     overflow: hidden;
-    /* Hide scrollbars */
     position: relative;
-    /* Mask for fading top/bottom */
     mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
     -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
 }
@@ -942,7 +748,6 @@ header h1 {
     border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
 }
 
-/* Pause on hover to read */
 .scoreboard-scroll:hover .score-list {
     animation-play-state: paused;
 }
@@ -972,6 +777,133 @@ header h1 {
     display: block;
 }
 
+/* 7. ANIMATIONS */
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.7;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes pulse-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 10px 2px var(--glow-color);
+        background-color: rgba(0, 255, 255, 0.1);
+    }
+
+    50% {
+        box-shadow: 0 0 20px 5px var(--glow-color);
+        background-color: rgba(0, 255, 255, 0.3);
+    }
+}
+
+@keyframes flash-status {
+
+    0%,
+    100% {
+        background-color: rgba(255, 0, 0, 0.3);
+    }
+
+    50% {
+        background-color: rgba(255, 0, 0, 0.7);
+    }
+}
+
+/* Re-applying variable to flash correctly */
+.entity-player.critical {
+    --status-color: var(--health-color);
+}
+
+.entity-player.starving {
+    --status-color: var(--hunger-color);
+}
+
+@keyframes flash-status {
+
+    0%,
+    100% {
+        background-color: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 0 0 0 var(--status-color);
+    }
+
+    50% {
+        background-color: rgba(var(--status-color), 0.5);
+        box-shadow: 0 0 0 2px var(--status-color);
+    }
+}
+
+/* Wait, I can't use rgba with hex variables easily in CSS without rgb units. 
+   I'll stick to the simpler flash animations but combine the logic. */
+
+@keyframes flash-critical {
+
+    0%,
+    100% {
+        background-color: rgba(248, 81, 73, 0.3);
+    }
+
+    50% {
+        background-color: rgba(248, 81, 73, 0.7);
+    }
+}
+
+@keyframes flash-starving {
+
+    0%,
+    100% {
+        background-color: rgba(210, 153, 34, 0.3);
+    }
+
+    50% {
+        background-color: rgba(210, 153, 34, 0.7);
+    }
+}
+
+@keyframes pulse-status {
+
+    0%,
+    100% {
+        opacity: 0.8;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 @keyframes scrollList {
     0% {
         transform: translateY(60vh);
@@ -980,6 +912,4 @@ header h1 {
     100% {
         transform: translateY(-100%);
     }
-
-    /* simple loop */
 }
