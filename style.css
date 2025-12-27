@@ -901,6 +901,14 @@ header h1 {
     backdrop-filter: blur(2px);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    /* Ensure clipping */
+}
+
+.scoreboard-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 
 .scoreboard-container h3 {
@@ -922,16 +930,20 @@ header h1 {
     -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
 }
 
+.score-list {
+    display: flex;
+    flex-direction: column;
+    animation: scrollList 15s linear infinite;
+}
+
 .score-entry {
     font-size: 0.9rem;
     padding: 0.5rem 0;
     border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
-    animation: scrollUp 20s linear infinite;
-    /* Slow auto scroll */
 }
 
 /* Pause on hover to read */
-.scoreboard-scroll:hover .score-entry {
+.scoreboard-scroll:hover .score-list {
     animation-play-state: paused;
 }
 
@@ -960,13 +972,13 @@ header h1 {
     display: block;
 }
 
-@keyframes scrollUp {
+@keyframes scrollList {
     0% {
-        transform: translateY(100%);
+        transform: translateY(60vh);
     }
 
     100% {
-        transform: translateY(-300%);
+        transform: translateY(-100%);
     }
 
     /* simple loop */

@@ -141,6 +141,7 @@ export class Game {
             <div class="scoreboard-container">
                 <h3>HALL OF HEROES</h3>
                 <div class="scoreboard-scroll">
+                    <div class="score-list">
         `;
 
         if (scores.length === 0) {
@@ -160,6 +161,7 @@ export class Game {
         }
 
         scoreboardHtml += `
+                    </div>
                 </div>
                 <button id="reset-scores-btn" class="danger-btn" style="margin-top:10px; width:auto; padding: 5px 10px; font-size: 0.8rem;">Reset Board</button>
             </div>
