@@ -8,6 +8,21 @@ export class Game {
         this.storageKey = 'mud_save_v2'; // Force reset to clear "Fully Revealed" debug state
         this.loadGame();
 
+        // Audio Priming: Unlocks audio on first user interaction
+        this.combatSoundPath = 'src/assets/sabre_9.mp3';
+        const primeAudio = () => {
+            const silent = new Audio(this.combatSoundPath);
+            silent.volume = 0;
+            silent.play().then(() => {
+                silent.pause();
+                console.log("DEBUG: Audio primed successfully.");
+            }).catch(e => console.warn("Audio priming failed:", e));
+            document.removeEventListener('click', primeAudio);
+            document.removeEventListener('keydown', primeAudio);
+        };
+        document.addEventListener('click', primeAudio);
+        document.addEventListener('keydown', primeAudio);
+
         // Bind Inputs
         document.addEventListener('keydown', (e) => this.handleInput(e));
         document.getElementById('reset-btn').addEventListener('click', () => this.resetGame());
@@ -729,6 +744,7 @@ export class Game {
     // Monster-initiated attack when moving into the player.
     // This is intentionally one-sided: the player does NOT get a free counter-attack here.
     monsterAttackPlayer(monster) {
+        this.playSound(this.combatSoundPath);
         console.log("DEBUG: monsterAttackPlayer called", {
             monsterId: monster.id,
             monsterType: monster.monsterType,
@@ -771,6 +787,7 @@ export class Game {
     }
 
     triggerCombat(monster) {
+        this.playSound(this.combatSoundPath);
         if (this.engagedMonsters.has(monster.id)) return;
         this.engagedMonsters.add(monster.id);
 
@@ -1255,5 +1272,10 @@ export class Game {
             if (e2 < dx) { err += dx; y0 += sy; }
         }
         return points;
+    }
+
+    playSound(path) {
+        const audio = new Audio(path);
+        audio.play().catch(e => console.warn("Audio playback failed:", e));
     }
 }
