@@ -973,7 +973,7 @@ export class Game {
         // Drops
         if (Math.random() < 1.0) {
             let drop;
-            if (monster.monsterType === 'deamon') {
+            if (monster.monsterType === 'deamon' && Math.random() < 0.5) {
                 drop = new Item(0, 0, 'gem');
             } else {
                 drop = this.generateLoot();
@@ -1025,13 +1025,13 @@ export class Game {
         const roll = Math.random();
         if (roll < 0.10) { // 10%
             return this.createEquipmentDrop();
-        } else if (roll < 0.50) { // 40% (0.1 to 0.5)
+        } else if (roll < 0.675) { // 57.5% (increased to absorb reductions)
             return this.createGoldDrop();
-        } else if (roll < 0.80) { // 30% (0.5 to 0.8)
+        } else if (roll < 0.825) { // 15% (halved from 30%)
             return new Item(0, 0, 'food');
-        } else if (roll < 0.95) { // 15% (0.8 to 0.95)
+        } else if (roll < 0.975) { // 15% (unchanged)
             return new Item(0, 0, 'potion');
-        } else { // 5% (0.95 to 1.0)
+        } else { // 2.5% (halved from 5%)
             return new Item(0, 0, 'potion_clarity');
         }
     }
