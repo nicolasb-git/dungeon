@@ -1376,7 +1376,7 @@ export class Game {
             const pot = this.player.inventory.find(i => i.itemType === 'potion');
             if (pot) { this.useItem(pot); return; }
         }
-        if (this.player.stamina < 20) {
+        if (this.player.stamina < 60) {
             const food = this.player.inventory.find(i => i.itemType === 'food');
             if (food) { this.useItem(food); return; }
         }
