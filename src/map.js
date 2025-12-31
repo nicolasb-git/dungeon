@@ -8,6 +8,7 @@ export class GameMap {
         this.tiles = [];
         this.entities = []; // Items and Monsters reside here
         this.init();
+        this.fullyRevealed = false;
     }
 
     init() {

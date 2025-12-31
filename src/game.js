@@ -23,9 +23,29 @@ export class Game {
         document.addEventListener('click', primeAudio);
         document.addEventListener('keydown', primeAudio);
 
+        // Autoplay state
+        this.autoplay = false;
+        this.autoplayInterval = null;
+        this.visitedRooms = new Set();
+        this.lastRoomIndex = -1;
+
         // Bind Inputs
         document.addEventListener('keydown', (e) => this.handleInput(e));
         document.getElementById('reset-btn').addEventListener('click', () => this.resetGame());
+
+        const autoToggle = document.getElementById('autoplay-toggle');
+        if (autoToggle) {
+            autoToggle.addEventListener('change', (e) => {
+                this.autoplay = e.target.checked;
+                if (this.autoplay) {
+                    this.ui.log("Auto-Play Enabled", "good");
+                    this.startAutoplay();
+                } else {
+                    this.ui.log("Auto-Play Disabled", "info");
+                    this.stopAutoplay();
+                }
+            });
+        }
 
         // Ensure scoreboard key exists
         if (!localStorage.getItem('mud_scoreboard')) {
@@ -319,6 +339,8 @@ export class Game {
         this.depth = 1;
         // Create player briefly so we have the object, but coordinates will be set by setupLevel
         this.player = new Player(0, 0, classKey);
+        this.visitedRooms = new Set();
+        this.lastRoomIndex = -1;
         this.setupLevel();
         this.ui.log(`New Game Started as ${this.player.name}.`, "good");
         this.saveGame();
@@ -331,6 +353,11 @@ export class Game {
         this.player.heal(10);
 
         this.setupLevel();
+
+        // Reset Bot exploration memory for new level
+        this.visitedRooms = new Set();
+        this.lastRoomIndex = -1;
+
         this.saveGame();
         this.render();
     }
@@ -434,6 +461,7 @@ export class Game {
     // ---------------- LOGIC ---------------- //
 
     handleInput(e) {
+        if (this.autoplay) return; // Ignore manual input during autoplay
         if (!this.player || !this.player.isAlive()) return;
 
         let dx = 0;
@@ -939,6 +967,7 @@ export class Game {
             }
             this.ui.log(`The monster dropped a ${drop.name || 'loot'}!`, "loot");
             this.player.addToInventory(drop);
+            this.handleAutoLoot(drop);
         }
 
         this.map.removeEntity(monster);
@@ -968,12 +997,14 @@ export class Game {
                 }
                 this.ui.log(msg, "loot");
                 this.player.addToInventory(drop);
+                this.handleAutoLoot(drop);
             });
         } else {
             // Pick up normal item
             this.map.removeEntity(item);
             this.ui.log(`You picked up ${item.name}.`, "loot");
             this.player.addToInventory(item);
+            this.handleAutoLoot(item);
         }
     }
 
@@ -1016,6 +1047,11 @@ export class Game {
         item.symbol = icons[slot] || '🛡️';
 
         return item;
+    }
+
+    getUpgradeCost(item) {
+        // Base 100, increases with quality
+        return Math.floor(100 * Math.pow(1.5, item.value));
     }
 
     createGoldDrop() {
@@ -1097,6 +1133,14 @@ export class Game {
             this.ui.log(`You drank the Clarity Potion. The dungeon layout is revealed!`, "good");
 
             this.map.fullyRevealed = true;
+            // Mark everything as explored for the AI
+            for (let y = 0; y < this.map.height; y++) {
+                for (let x = 0; x < this.map.width; x++) {
+                    if (!this.map.isWall(x, y)) {
+                        this.map.setExplored(x, y);
+                    }
+                }
+            }
 
             let cured = false;
             // Dispel Pox
@@ -1191,8 +1235,8 @@ export class Game {
             fov = this.computeFOV(this.player.x, this.player.y, 3); // Radius 3
         }
 
+        this.player.fov = fov; // Assign vision to player for bot logic
         this.ui.drawMap(this.map, this.player, fov);
-        this.ui.updateStats(this.player, this.depth);
         this.ui.updateStats(this.player, this.depth);
         this.ui.updateStatusEffects(this.player);
         this.ui.updateInventory(this.player.inventory, (item) => this.useItem(item));
@@ -1203,23 +1247,22 @@ export class Game {
         const item = this.player.equipment[slot];
         if (!item) return;
 
-        // Check for Gold
+        const cost = this.getUpgradeCost(item);
         const goldItem = this.player.inventory.find(i => i.itemType === 'gold');
-        const goldAmount = goldItem ? goldItem.value : 0;
+        const currentGold = goldItem ? goldItem.value : 0;
 
-        if (goldAmount >= 500) {
-            goldItem.value -= 500;
+        if (currentGold >= cost) {
+            goldItem.value -= cost;
             if (goldItem.value <= 0) {
                 this.player.inventory = this.player.inventory.filter(i => i !== goldItem);
             }
 
             item.value += 1;
-            this.ui.log(`Upgraded ${item.name} to +${item.value} for 500 gold!`, "good");
-
+            this.ui.log(`Upgraded ${item.name} to +${item.value} for ${cost} gold!`, "good");
             this.render();
             this.saveGame();
         } else {
-            this.ui.log(`Not enough gold! Need 500, have ${goldAmount}.`, "warning");
+            this.ui.log(`Insufficient gold! Upgrading ${item.name} needs ${cost} gold (Have: ${currentGold}).`, "warning");
         }
     }
 
@@ -1277,5 +1320,221 @@ export class Game {
     playSound(path) {
         const audio = new Audio(path);
         audio.play().catch(e => console.warn("Audio playback failed:", e));
+    }
+
+    // ---------------- AUTOPLAY BOT ---------------- //
+
+    handleAutoLoot(item) {
+        // "auto use potions, gold, food, gems, auto equip stuff as soon as looted"
+        // Gold is handled by inventory. Potential for auto-use potions/food is in runBotTurn for smart use.
+        // But "gems" and "equipment" should be used/equipped immediately as per request.
+        if (item.itemType === 'gem' || item.itemType === 'equipment') {
+            this.useItem(item);
+        }
+    }
+
+    startAutoplay() {
+        if (this.autoplayInterval) return;
+        this.autoplayInterval = setInterval(() => {
+            if (!this.autoplay || !this.player.isAlive()) {
+                this.stopAutoplay();
+                return;
+            }
+            this.runBotTurn();
+        }, 300);
+    }
+
+    stopAutoplay() {
+        if (this.autoplayInterval) {
+            clearInterval(this.autoplayInterval);
+            this.autoplayInterval = null;
+        }
+    }
+
+    runBotTurn() {
+        if (this.player.isParalyzed()) {
+            this.movePlayer(0, 0); // Advance timer even when unable to move
+            return;
+        }
+
+        // 1. Auto Use Essentials (Potions and Food as needed)
+        if (this.player.life < this.player.maxLife * 0.5) {
+            const pot = this.player.inventory.find(i => i.itemType === 'potion');
+            if (pot) { this.useItem(pot); return; }
+        }
+        if (this.player.stamina < 20) {
+            const food = this.player.inventory.find(i => i.itemType === 'food');
+            if (food) { this.useItem(food); return; }
+        }
+
+        // 1.5. Auto Use Clarity Potion if available to reveal the map
+        const clarity = this.player.inventory.find(i => i.itemType === 'potion_clarity');
+        if (clarity && !this.map.fullyRevealed) {
+            this.useItem(clarity);
+            return;
+        }
+
+        // 2. Auto Upgrade Equipment with Gold
+        const goldItem = this.player.inventory.find(i => i.itemType === 'gold');
+        const currentGold = goldItem ? goldItem.value : 0;
+        if (currentGold >= 100) {
+            // Check all slots
+            for (let slot in this.player.equipment) {
+                const item = this.player.equipment[slot];
+                if (item) {
+                    const cost = this.getUpgradeCost(item);
+                    if (currentGold >= cost) {
+                        this.handleEquipmentClick(slot);
+                        return; // Done one upgrade this tick
+                    }
+                }
+            }
+        }
+
+        // 2. State Mapping: Get all tiles in FOV
+        const entities = this.map.entities;
+        const visibleEntities = entities.filter(e => {
+            const key = `${e.x},${e.y}`;
+            return this.player.fov && this.player.fov.has(key);
+        });
+
+        // 3. Prioritize Targets
+        const monsters = visibleEntities.filter(e => e.type === 'monster' && e.isAlive());
+        const treasures = visibleEntities.filter(e => e.type === 'item' && e.itemType === 'treasure');
+        const items = visibleEntities.filter(e => e.type === 'item' && e.itemType !== 'exit' && e.itemType !== 'treasure');
+        const exit = visibleEntities.find(e => e.type === 'item' && e.itemType === 'exit');
+
+        const currentRoom = this.map.getRoomAt(this.player.x, this.player.y);
+
+        // Categorize by location
+        const sameRoomMonsters = currentRoom ? monsters.filter(m => this.map.getRoomAt(m.x, m.y) === currentRoom) : [];
+        const sameRoomTreasures = currentRoom ? treasures.filter(t => this.map.getRoomAt(t.x, t.y) === currentRoom) : [];
+
+        let target = null;
+        if (sameRoomMonsters.length > 0) {
+            target = sameRoomMonsters.reduce((prev, curr) => this.dist(this.player, curr) < this.dist(this.player, prev) ? curr : prev);
+            console.log("BOT: Targeting monster in room", target.name, target.x, target.y);
+        } else if (sameRoomTreasures.length > 0) {
+            target = sameRoomTreasures.reduce((prev, curr) => this.dist(this.player, curr) < this.dist(this.player, prev) ? curr : prev);
+            console.log("BOT: Targeting treasure in room", target.x, target.y);
+        } else if (monsters.length > 0) {
+            target = monsters.reduce((prev, curr) => this.dist(this.player, curr) < this.dist(this.player, prev) ? curr : prev);
+            console.log("BOT: Targeting distant monster", target.name, target.x, target.y);
+        } else if (treasures.length > 0) {
+            target = treasures.reduce((prev, curr) => this.dist(this.player, curr) < this.dist(this.player, prev) ? curr : prev);
+            console.log("BOT: Targeting distant treasure", target.x, target.y);
+        } else if (items.length > 0) {
+            target = items.reduce((prev, curr) => this.dist(this.player, curr) < this.dist(this.player, prev) ? curr : prev);
+            console.log("BOT: Targeting item", target.name, target.x, target.y);
+        } else if (exit) {
+            target = exit;
+            console.log("BOT: Targeting exit", target.x, target.y);
+        }
+
+        if (target) {
+            this.moveTowards(target.x, target.y);
+            return;
+        }
+
+        // 4. Exploration: Head to nearest unvisited room or unexplored tile
+        const currentRoomIndex = this.map.rooms.findIndex(r =>
+            this.player.x >= r.x && this.player.x < r.x + r.w &&
+            this.player.y >= r.y && this.player.y < r.y + r.h
+        );
+        if (currentRoomIndex !== -1 && currentRoomIndex !== this.lastRoomIndex) {
+            this.visitedRooms.add(currentRoomIndex);
+            this.lastRoomIndex = currentRoomIndex;
+        }
+
+        const path = this.findPathToExploration();
+        if (path && path.length > 1) {
+            this.movePlayer(path[1].x - this.player.x, path[1].y - this.player.y);
+        } else {
+            // If completely lost or stuck, head to stairs even if not in sight (cheat slightly for flow)
+            const globalExit = this.map.entities.find(e => e.itemType === 'exit');
+            if (globalExit) {
+                this.moveTowards(globalExit.x, globalExit.y);
+            }
+        }
+    }
+
+    dist(a, b) {
+        return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+    }
+
+    moveTowards(tx, ty) {
+        if (this.player.x === tx && this.player.y === ty) return;
+
+        // Use BFS for all moves to ensure we respect walls correctly
+        const path = this.findPath(this.player.x, this.player.y, tx, ty);
+        if (path && path.length > 1) {
+            const nextStep = path[1];
+            this.movePlayer(nextStep.x - this.player.x, nextStep.y - this.player.y);
+        } else {
+            console.warn("BOT: No path found to", tx, ty);
+        }
+    }
+
+    findPath(sx, sy, tx, ty) {
+        const queue = [[{ x: sx, y: sy }]];
+        const visited = new Set([`${sx},${sy}`]);
+
+        while (queue.length > 0) {
+            const currentPath = queue.shift();
+            const last = currentPath[currentPath.length - 1];
+
+            if (last.x === tx && last.y === ty) return currentPath;
+
+            const neighbors = [
+                { x: last.x + 1, y: last.y }, { x: last.x - 1, y: last.y },
+                { x: last.x, y: last.y + 1 }, { x: last.x, y: last.y - 1 },
+                { x: last.x + 1, y: last.y + 1 }, { x: last.x - 1, y: last.y - 1 },
+                { x: last.x + 1, y: last.y - 1 }, { x: last.x - 1, y: last.y + 1 }
+            ];
+
+            for (const n of neighbors) {
+                if (n.x < 0 || n.x >= this.map.width || n.y < 0 || n.y >= this.map.height) continue;
+                if (this.map.isWall(n.x, n.y)) continue;
+                if (!visited.has(`${n.x},${n.y}`)) {
+                    visited.add(`${n.x},${n.y}`);
+                    queue.push([...currentPath, n]);
+                }
+            }
+        }
+        return null;
+    }
+
+    findPathToExploration() {
+        // Search for nearest unvisited room centers
+        const unvisitedRooms = this.map.rooms
+            .map((r, i) => ({ center: this.map.getCenter(r), index: i }))
+            .filter(r => !this.visitedRooms.has(r.index));
+
+        if (unvisitedRooms.length > 0) {
+            unvisitedRooms.sort((a, b) => this.dist(this.player, a.center) - this.dist(this.player, b.center));
+            return this.findPath(this.player.x, this.player.y, unvisitedRooms[0].center.x, unvisitedRooms[0].center.y);
+        }
+
+        // Otherwise find nearest unexplored floor tile
+        for (let radius = 1; radius < 25; radius++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    const nx = this.player.x + dx;
+                    const ny = this.player.y + dy;
+                    if (nx >= 0 && nx < this.map.width && ny >= 0 && ny < this.map.height) {
+                        if (!this.map.explored[ny][nx] && !this.map.isWall(nx, ny)) {
+                            const p = this.findPath(this.player.x, this.player.y, nx, ny);
+                            if (p) return p;
+                        }
+                    }
+                }
+            }
+        }
+
+        // If everything explored or fully revealed, go to exit
+        const exit = this.map.entities.find(e => e.itemType === 'exit');
+        if (exit) return this.findPath(this.player.x, this.player.y, exit.x, exit.y);
+
+        return null;
     }
 }
