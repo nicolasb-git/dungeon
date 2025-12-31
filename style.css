@@ -914,11 +914,13 @@ header h1 {
     }
 }
 
-/* Toggle Switch */
-.autoplay-container {
+/* Toggle Switches */
+.toggles-container {
     display: flex;
+    flex-direction: row;
+    justify-content: space-around;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     margin-bottom: 1rem;
     padding: 0.5rem;
     background: rgba(255, 255, 255, 0.05);
@@ -926,11 +928,20 @@ header h1 {
     border: 1px solid var(--border-color);
 }
 
-.autoplay-label {
+.toggle-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.toggle-label {
     font-family: var(--font-heading);
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     color: var(--text-main);
     letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0.8;
 }
 
 .toggle-switch {

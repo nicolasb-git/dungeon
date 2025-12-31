@@ -28,6 +28,7 @@ export class Game {
         this.autoplayInterval = null;
         this.visitedRooms = new Set();
         this.lastRoomIndex = -1;
+        this.soundEnabled = true;
 
         // Bind Inputs
         document.addEventListener('keydown', (e) => this.handleInput(e));
@@ -43,6 +44,18 @@ export class Game {
                 } else {
                     this.ui.log("Auto-Play Disabled", "info");
                     this.stopAutoplay();
+                }
+            });
+        }
+
+        const soundToggle = document.getElementById('sound-toggle');
+        if (soundToggle) {
+            soundToggle.addEventListener('change', (e) => {
+                this.soundEnabled = e.target.checked;
+                if (this.soundEnabled) {
+                    this.ui.log("Sound Enabled", "info");
+                } else {
+                    this.ui.log("Sound Disabled", "info");
                 }
             });
         }
@@ -1318,6 +1331,7 @@ export class Game {
     }
 
     playSound(path) {
+        if (!this.soundEnabled) return;
         const audio = new Audio(path);
         audio.play().catch(e => console.warn("Audio playback failed:", e));
     }
