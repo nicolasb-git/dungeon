@@ -1355,7 +1355,7 @@ export class Game {
                 return;
             }
             this.runBotTurn();
-        }, 300);
+        }, 75);
     }
 
     stopAutoplay() {
