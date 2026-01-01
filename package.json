@@ -1,7 +1,7 @@
 {
-  "name": "browser-mud",
+  "name": "browser-dungeon",
   "version": "1.0.0",
-  "description": "A local browser-based graphical MUD",
+  "description": "A local browser-based graphical Dungeon",
   "scripts": {
     "start": "npx serve ."
   }

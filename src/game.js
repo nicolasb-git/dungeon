@@ -5,7 +5,7 @@ import { UI } from './ui.js';
 export class Game {
     constructor() {
         this.ui = new UI();
-        this.storageKey = 'mud_save_v2'; // Force reset to clear "Fully Revealed" debug state
+        this.storageKey = 'dungeon_save_v2'; // Force reset to clear "Fully Revealed" debug state
         this.loadGame();
 
         // Audio Priming: Unlocks audio on first user interaction
@@ -61,14 +61,14 @@ export class Game {
         }
 
         // Ensure scoreboard key exists
-        if (!localStorage.getItem('mud_scoreboard')) {
-            localStorage.setItem('mud_scoreboard', JSON.stringify([]));
+        if (!localStorage.getItem('dungeon_scoreboard')) {
+            localStorage.setItem('dungeon_scoreboard', JSON.stringify([]));
         }
     }
 
     getHighScores() {
         try {
-            return JSON.parse(localStorage.getItem('mud_scoreboard')) || [];
+            return JSON.parse(localStorage.getItem('dungeon_scoreboard')) || [];
         } catch (e) {
             return [];
         }
@@ -92,12 +92,12 @@ export class Game {
             scores.splice(10);
         }
 
-        localStorage.setItem('mud_scoreboard', JSON.stringify(scores));
+        localStorage.setItem('dungeon_scoreboard', JSON.stringify(scores));
     }
 
     resetScores() {
         if (confirm("Are you sure you want to wipe the scoreboard? This cannot be undone.")) {
-            localStorage.removeItem('mud_scoreboard');
+            localStorage.removeItem('dungeon_scoreboard');
             this.handleCharacterSelection(); // Refresh UI
         }
     }

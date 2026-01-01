@@ -1,6 +1,6 @@
 ﻿# Shadows of the Dungeon
 
-A local browser-based graphical dungeon crawler (MUD). Explore deep into the shadows, battle monsters, and power up your hero in this grid-based adventure.
+A local browser-based graphical dungeon crawler (Dungeon). Explore deep into the shadows, battle monsters, and power up your hero in this grid-based adventure.
 
 ## Features
 
