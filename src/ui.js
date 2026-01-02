@@ -172,7 +172,7 @@ export class UI {
                 }
             }
         }
-        console.log(`DEBUG: drawMap finished. Rendered ${renderedEntities} entities. FOV size: ${fov ? fov.size : 'null'}`);
+        // console.log(`DEBUG: drawMap finished. Rendered ${renderedEntities} entities. FOV size: ${fov ? fov.size : 'null'}`);
     }
 
     updateStats(player, depth) {
@@ -212,7 +212,7 @@ export class UI {
     }
 
     updateInventory(inventory, onUse) {
-        console.log("DEBUG: UI updating inventory. Count:", inventory ? inventory.length : 'null');
+        // console.log("DEBUG: UI updating inventory. Count:", inventory ? inventory.length : 'null');
         this.invList.innerHTML = '';
         if (inventory.length === 0) {
             this.invList.innerHTML = '<li class="empty-slot">Empty</li>';

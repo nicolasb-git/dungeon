@@ -248,7 +248,7 @@ export class Player extends Actor {
         } else {
             this.inventory.push(newItem);
         }
-        console.log("DEBUG: Inventory size:", this.inventory.length);
+        // console.log("DEBUG: Inventory size:", this.inventory.length);
     }
 
     equipItem(item) {

@@ -15,7 +15,7 @@ export class Game {
             silent.volume = 0;
             silent.play().then(() => {
                 silent.pause();
-                console.log("DEBUG: Audio primed successfully.");
+                // console.log("DEBUG: Audio primed successfully.");
             }).catch(e => console.warn("Audio priming failed:", e));
             document.removeEventListener('click', primeAudio);
             document.removeEventListener('keydown', primeAudio);
@@ -127,7 +127,7 @@ export class Game {
     }
 
     handleCharacterSelection() {
-        console.log("DEBUG: handleCharacterSelection called");
+        // console.log("DEBUG: handleCharacterSelection called");
         const screen = document.getElementById('character-select');
         if (!screen) {
             console.error("Critical: character-select element not found");
@@ -149,7 +149,7 @@ export class Game {
         grid.style.flexWrap = 'wrap';
         grid.style.justifyContent = 'center';
 
-        console.log("DEBUG: Classes available:", Object.keys(CLASSES));
+        // console.log("DEBUG: Classes available:", Object.keys(CLASSES));
 
         Object.keys(CLASSES).forEach(key => {
             const cls = CLASSES[key];
@@ -397,7 +397,7 @@ export class Game {
         cols = Math.max(20, cols);
         rows = Math.max(15, rows);
 
-        console.log(`DEBUG: SetupLevel calculated map size: ${cols}x${rows} (from viewport ${availW}x${availH})`);
+        // console.log(`DEBUG: SetupLevel calculated map size: ${cols}x${rows} (from viewport ${availW}x${availH})`);
 
         // Pad slightly to avoid edge gluing
         cols -= 2;
@@ -496,20 +496,20 @@ export class Game {
         this.engagedMonsters = new Set(); // Reset per turn
 
         // DEBUG: Log monsters around the player at the start of the turn
-        const allMonsters = this.map.entities.filter(e => e.type === 'monster' && e.isAlive());
-        const nearbyMonsters = allMonsters.filter(m => {
-            const dxm = Math.abs(m.x - this.player.x);
-            const dym = Math.abs(m.y - this.player.y);
-            return dxm <= 1 && dym <= 1; // 8 neighbours + current tile
-        });
-        console.log("DEBUG: Start of turn - total monsters:", allMonsters.length,
-            "nearby monsters:", nearbyMonsters.map(m => ({
-                id: m.id,
-                type: m.monsterType,
-                x: m.x,
-                y: m.y,
-                life: m.life
-            })));
+        // const allMonsters = this.map.entities.filter(e => e.type === 'monster' && e.isAlive());
+        // const nearbyMonsters = allMonsters.filter(m => {
+        //     const dxm = Math.abs(m.x - this.player.x);
+        //     const dym = Math.abs(m.y - this.player.y);
+        //     return dxm <= 1 && dym <= 1; // 8 neighbours + current tile
+        // });
+        // console.log("DEBUG: Start of turn - total monsters:", allMonsters.length,
+        //     "nearby monsters:", nearbyMonsters.map(m => ({
+        //         id: m.id,
+        //         type: m.monsterType,
+        //         x: m.x,
+        //         y: m.y,
+        //         life: m.life
+        //     })));
 
         // Paralysis: if active, the player loses their turn (cannot move or attack)
         if (this.player.isParalyzed && this.player.isParalyzed()) {
@@ -543,6 +543,7 @@ export class Game {
 
         if (target) {
             if (target.type === 'monster') {
+                /*
                 console.log("DEBUG: Player is attacking monster:", {
                     id: target.id,
                     type: target.monsterType,
@@ -551,6 +552,7 @@ export class Game {
                     y: target.y,
                     life: target.life
                 });
+                */
 
                 this.triggerCombat(target);
                 // Combat takes movement point? Yes usually.
@@ -561,9 +563,9 @@ export class Game {
                 // triggerCombat adds to engagedMonsters.
                 // processMonsterTurns skips engagedMonsters.
                 // So this logic is safe.
-                console.log("DEBUG: After combat, before monster turns - monsters alive:", this.map.entities.filter(e => e.type === 'monster' && e.isAlive()).length);
+                // console.log("DEBUG: After combat, before monster turns - monsters alive:", this.map.entities.filter(e => e.type === 'monster' && e.isAlive()).length);
                 this.processMonsterTurns();
-                console.log("DEBUG: After monster turns - monsters alive:", this.map.entities.filter(e => e.type === 'monster' && e.isAlive()).length);
+                // console.log("DEBUG: After monster turns - monsters alive:", this.map.entities.filter(e => e.type === 'monster' && e.isAlive()).length);
 
                 this.render();
                 return; // Don't move into monster
@@ -609,13 +611,13 @@ export class Game {
             e.type === 'monster' && e.isAlive()
         );
 
-        console.log("DEBUG: processMonsterTurns - starting. Active monsters:", activeMonsters.map(m => ({
-            id: m.id,
-            type: m.monsterType,
-            x: m.x,
-            y: m.y,
-            life: m.life
-        })));
+        // console.log("DEBUG: processMonsterTurns - starting. Active monsters:", activeMonsters.map(m => ({
+        //     id: m.id,
+        //     type: m.monsterType,
+        //     x: m.x,
+        //     y: m.y,
+        //     life: m.life
+        // })));
 
         activeMonsters.forEach(monster => {
             const mRoom = this.map.getRoomAt(monster.x, monster.y);
@@ -624,6 +626,7 @@ export class Game {
             if (monster.isSlow) {
                 monster.turnCounter = (monster.turnCounter || 0) + 1;
                 if (monster.turnCounter % 2 !== 0) {
+                    /*
                     console.log("DEBUG: Monster turn skipped due to slow:", {
                         id: monster.id,
                         type: monster.monsterType,
@@ -632,6 +635,7 @@ export class Game {
                         life: monster.life,
                         turnCounter: monster.turnCounter
                     });
+                    */
                     return; // Skip this turn
                 }
             }
@@ -639,61 +643,63 @@ export class Game {
             // Logic:
             const dx = Math.abs(this.player.x - monster.x);
             const dy = Math.abs(this.player.y - monster.y);
-            const dist = dx + dy;
-
             // Chase if within aggro range (allows following into corridors)
             const AGGRO_RANGE = 8;
 
-            const playerParalyzed = this.player.isParalyzed ? this.player.isParalyzed() : false;
-            console.log("DEBUG: Monster considering turn:", {
-                id: monster.id,
-                type: monster.monsterType,
-                monsterX: monster.x,
-                monsterY: monster.y,
-                playerX: this.player.x,
-                playerY: this.player.y,
-                distance: dist,
-                inRange: dist <= AGGRO_RANGE,
-                playerParalyzed: playerParalyzed
-            });
+            // Use Chebyshev distance for 8-way movement/aggro
+            const chebDist = Math.max(dx, dy);
 
-            if (dist <= AGGRO_RANGE) {
+            const playerParalyzed = this.player.isParalyzed ? this.player.isParalyzed() : false;
+            // console.log("DEBUG: Monster considering turn:", {
+            //     id: monster.id,
+            //     type: monster.monsterType,
+            //     monsterX: monster.x,
+            //     monsterY: monster.y,
+            //     playerX: this.player.x,
+            //     playerY: this.player.y,
+            //     chebDist: chebDist,
+            //     inRange: chebDist <= AGGRO_RANGE,
+            //     playerParalyzed: playerParalyzed
+            // });
+
+            if (chebDist <= AGGRO_RANGE) {
                 // Check if already updated this turn (engaged)
                 if (this.engagedMonsters && this.engagedMonsters.has(monster.id)) {
-                    console.log("DEBUG: Monster already engaged this turn, skipping move:", {
-                        id: monster.id,
-                        type: monster.monsterType
-                    });
+                    /*
+                console.log("DEBUG: Monster already engaged this turn, skipping move:", {
+                    id: monster.id,
+                    type: monster.monsterType
+                });
+                */
                     return;
                 }
 
-                console.log("DEBUG: Monster taking turn towards player:", {
-                    id: monster.id,
-                    type: monster.monsterType,
-                    fromX: monster.x,
-                    fromY: monster.y
-                });
+                // console.log("DEBUG: Monster taking turn towards player:", {
+                //     id: monster.id,
+                //     type: monster.monsterType,
+                //     fromX: monster.x,
+                //     fromY: monster.y
+                // });
                 this.moveMonsterTowardsPlayer(monster);
             } else {
+                /*
                 console.log("DEBUG: Monster out of aggro range, not moving:", {
                     id: monster.id,
                     type: monster.monsterType,
-                    distance: dist,
+                    distance: chebDist,
                     maxRange: AGGRO_RANGE
                 });
+                */
             }
         });
 
-        const monstersAfter = this.map.entities.filter(e =>
-            e.type === 'monster' && e.isAlive()
-        );
-        console.log("DEBUG: processMonsterTurns - finished. Active monsters:", monstersAfter.map(m => ({
-            id: m.id,
-            type: m.monsterType,
-            x: m.x,
-            y: m.y,
-            life: m.life
-        })));
+        // console.log("DEBUG: processMonsterTurns - finished. Active monsters:", monstersAfter.map(m => ({
+        //     id: m.id,
+        //     type: m.monsterType,
+        //     x: m.x,
+        //     y: m.y,
+        //     life: m.life
+        // })));
     }
 
     moveMonsterTowardsPlayer(monster) {
@@ -703,14 +709,18 @@ export class Game {
         // Smart Pathfinding: Try primary axis, then secondary axis
         const moves = [];
 
+        // Primary Axis
         if (Math.abs(dx) >= Math.abs(dy)) {
-            // Primary X
             if (dx !== 0) moves.push({ x: Math.sign(dx), y: 0 });
             if (dy !== 0) moves.push({ x: 0, y: Math.sign(dy) });
         } else {
-            // Primary Y
             if (dy !== 0) moves.push({ x: 0, y: Math.sign(dy) });
-            if (dx !== 0) moves.push({ x: Math.sign(dx), y: 0 }); // Fallback
+            if (dx !== 0) moves.push({ x: Math.sign(dx), y: 0 });
+        }
+
+        // Add Diagonal as fallback or primary if closer
+        if (dx !== 0 && dy !== 0) {
+            moves.unshift({ x: Math.sign(dx), y: Math.sign(dy) });
         }
 
         for (let move of moves) {
@@ -731,28 +741,26 @@ export class Game {
 
             // If move succeeded (moved or attacked), stop.
             if (this.tryMonsterMove(monster, destX, destY)) {
+                /*
                 console.log("DEBUG: Monster action taken:", {
                     id: monster.id,
                     type: monster.monsterType,
                     toX: monster.x,
                     toY: monster.y
                 });
+                */
                 return;
             }
         }
 
-        console.log("DEBUG: Monster could not move this turn (all moves blocked):", {
-            id: monster.id,
-            type: monster.monsterType,
-            x: monster.x,
-            y: monster.y
-        });
+        // monster.ui.log("Monster could not move...") // Silence spam
     }
 
     tryMonsterMove(monster, x, y) {
         // 1. Check Collision with Player -> ATTACK
         if (x === this.player.x && y === this.player.y) {
             const playerParalyzed = this.player.isParalyzed ? this.player.isParalyzed() : false;
+            /*
             console.log("DEBUG: Monster is attacking player (monster-initiated combat):", {
                 id: monster.id,
                 type: monster.monsterType,
@@ -762,6 +770,7 @@ export class Game {
                 playerY: this.player.y,
                 playerParalyzed: playerParalyzed
             });
+            */
 
             // NOTE:
             // We now use a simplified, MONSTER-ONLY attack when the monster moves into the player.
@@ -786,6 +795,7 @@ export class Game {
     // This is intentionally one-sided: the player does NOT get a free counter-attack here.
     monsterAttackPlayer(monster) {
         this.playSound(this.combatSoundPath);
+        /*
         console.log("DEBUG: monsterAttackPlayer called", {
             monsterId: monster.id,
             monsterType: monster.monsterType,
@@ -793,9 +803,10 @@ export class Game {
             playerLife: this.player.life,
             playerAlive: this.player.isAlive()
         });
+        */
 
         if (!this.player || !this.player.isAlive()) {
-            console.log("DEBUG: monsterAttackPlayer aborted - player not alive");
+            // console.log("DEBUG: monsterAttackPlayer aborted - player not alive");
             return;
         }
 
@@ -810,11 +821,13 @@ export class Game {
         this.ui.log(`The ${monster.name} hits you for ${damage} damage!`, "combat");
         this.player.takeDamage(damage);
 
+        /*
         console.log("DEBUG: monsterAttackPlayer - damage dealt", {
             damage,
             playerLifeAfter: this.player.life,
             playerWasParalyzed
         });
+        */
 
         // Blob paralysis effect - 50% chance (or configured chance)
         if (monster.paralysisChance && Math.random() < monster.paralysisChance) {
@@ -834,6 +847,7 @@ export class Game {
 
         // DEBUG: Snapshot of monsters right before this combat
         const monstersBefore = this.map.entities.filter(e => e.type === 'monster' && e.isAlive());
+        /*
         console.log("DEBUG: triggerCombat - starting combat with monster", {
             id: monster.id,
             type: monster.monsterType,
@@ -842,12 +856,13 @@ export class Game {
             y: monster.y,
             life: monster.life
         }, "Total monsters alive:", monstersBefore.length);
+        */
 
         const staminaRatio = this.player.stamina / this.player.maxStamina;
         const chance = Math.floor(staminaRatio * 100);
         const roll = Math.floor(Math.random() * 100); // 0-99
 
-        console.log(`DEBUG: Initiative Roll: ${roll} vs Chance: ${chance}`);
+        // console.log(`DEBUG: Initiative Roll: ${roll} vs Chance: ${chance}`);
 
         // Player wins if roll < chance
         // UNLESS monster has initiative (like Rat)
@@ -876,7 +891,7 @@ export class Game {
 
         // DEBUG: Snapshot of monsters right after this combat resolution
         const monstersAfter = this.map.entities.filter(e => e.type === 'monster' && e.isAlive());
-        console.log("DEBUG: triggerCombat - combat resolved. Total monsters alive now:", monstersAfter.length);
+        // console.log("DEBUG: triggerCombat - combat resolved. Total monsters alive now:", monstersAfter.length);
     }
 
     performAttack(attacker, defender) {
@@ -886,7 +901,7 @@ export class Game {
         if (attacker === this.player) {
             const isParalyzed = this.player.isParalyzed && this.player.isParalyzed();
             if (isParalyzed) {
-                console.log("DEBUG: Player is paralyzed, blocking attack. Paralyzed turns:", this.player.paralyzedTurns);
+                // console.log("DEBUG: Player is paralyzed, blocking attack. Paralyzed turns:", this.player.paralyzedTurns);
                 damage = 0;
                 this.ui.log("You swing weakly while paralyzed - no damage!", "warning");
                 // Don't proceed with attack if paralyzed
@@ -901,15 +916,17 @@ export class Game {
                 this.ui.log(`You hit the ${defender.name} for ${damage} damage!`, "combat");
             }
 
+            /*
             console.log("DEBUG: performAttack (player) -> defender state", {
                 defenderId: defender.id,
                 name: defender.name,
                 type: defender.monsterType,
-                beforeLife,
-                damage,
+                beforeLife: beforeLife,
+                damage: damage,
                 afterLife: defender.life,
                 isAlive: defender.isAlive()
             });
+            */
 
             if (!defender.isAlive()) {
                 this.handleMonsterDeath(defender);
@@ -947,6 +964,7 @@ export class Game {
 
     handleMonsterDeath(monster) {
         const monstersBefore = this.map.entities.filter(e => e.type === 'monster' && e.isAlive());
+        /*
         console.log("DEBUG: handleMonsterDeath called for", {
             id: monster.id,
             type: monster.monsterType,
@@ -955,6 +973,7 @@ export class Game {
             y: monster.y,
             life: monster.life
         }, "Monsters alive before removal:", monstersBefore.length);
+        */
 
         this.ui.log(`The ${monster.name} dies!`, "good");
 
@@ -986,7 +1005,7 @@ export class Game {
         this.map.removeEntity(monster);
 
         const monstersAfter = this.map.entities.filter(e => e.type === 'monster' && e.isAlive());
-        console.log("DEBUG: handleMonsterDeath finished. Monsters alive after removal:", monstersAfter.length);
+        // console.log("DEBUG: handleMonsterDeath finished. Monsters alive after removal:", monstersAfter.length);
     }
 
     collectItem(item) {
@@ -1425,7 +1444,14 @@ export class Game {
         const sameRoomTreasures = currentRoom ? treasures.filter(t => this.map.getRoomAt(t.x, t.y) === currentRoom) : [];
 
         let target = null;
-        if (sameRoomMonsters.length > 0) {
+
+        // NEW: Check for immediate threats (monsters at distance 1.5 - adjacent or diagonal)
+        const immediateThreats = monsters.filter(m => this.dist(this.player, m) <= 1.5);
+
+        if (immediateThreats.length > 0) {
+            target = immediateThreats.reduce((prev, curr) => this.dist(this.player, curr) < this.dist(this.player, prev) ? curr : prev);
+            console.log("BOT: Targeting IMMEDIATE threat", target.name, target.x, target.y);
+        } else if (sameRoomMonsters.length > 0) {
             target = sameRoomMonsters.reduce((prev, curr) => this.dist(this.player, curr) < this.dist(this.player, prev) ? curr : prev);
             console.log("BOT: Targeting monster in room", target.name, target.x, target.y);
         } else if (sameRoomTreasures.length > 0) {
@@ -1445,31 +1471,46 @@ export class Game {
             console.log("BOT: Targeting exit", target.x, target.y);
         }
 
+        let actionTaken = false;
+
         if (target) {
-            this.moveTowards(target.x, target.y);
-            return;
+            actionTaken = this.moveTowards(target.x, target.y);
+        } else {
+            // Explore
+            const currentRoomIndex = this.map.rooms.findIndex(r =>
+                this.player.x >= r.x && this.player.x < r.x + r.w &&
+                this.player.y >= r.y && this.player.y < r.y + r.h
+            );
+            if (currentRoomIndex !== -1 && currentRoomIndex !== this.lastRoomIndex) {
+                this.visitedRooms.add(currentRoomIndex);
+                this.lastRoomIndex = currentRoomIndex;
+            }
+
+            actionTaken = this.explore();
         }
 
-        // 4. Exploration: Head to nearest unvisited room or unexplored tile
-        const currentRoomIndex = this.map.rooms.findIndex(r =>
-            this.player.x >= r.x && this.player.x < r.x + r.w &&
-            this.player.y >= r.y && this.player.y < r.y + r.h
-        );
-        if (currentRoomIndex !== -1 && currentRoomIndex !== this.lastRoomIndex) {
-            this.visitedRooms.add(currentRoomIndex);
-            this.lastRoomIndex = currentRoomIndex;
+        // Failsafe: If no action was taken (blocked, no path, etc.), WAIT.
+        // This ensures the game clock advances and monsters get to move.
+        if (!actionTaken) {
+            this.movePlayer(0, 0);
         }
+    }
+
+    explore() {
+        let moved = false;
 
         const path = this.findPathToExploration();
         if (path && path.length > 1) {
             this.movePlayer(path[1].x - this.player.x, path[1].y - this.player.y);
+            moved = true;
         } else {
             // If completely lost or stuck, head to stairs even if not in sight (cheat slightly for flow)
             const globalExit = this.map.entities.find(e => e.itemType === 'exit');
             if (globalExit) {
-                this.moveTowards(globalExit.x, globalExit.y);
+                moved = this.moveTowards(globalExit.x, globalExit.y);
             }
         }
+        return moved;
     }
 
     dist(a, b) {
@@ -1480,16 +1521,25 @@ export class Game {
         if (this.player.x === tx && this.player.y === ty) return;
 
         // Use BFS for all moves to ensure we respect walls correctly
-        const path = this.findPath(this.player.x, this.player.y, tx, ty);
+        // 1. Try to find a path while avoiding other monsters (except the target)
+        let path = this.findPath(this.player.x, this.player.y, tx, ty, true);
+
+        // 2. Fallback to standard path if blocked by monsters
+        if (!path) {
+            path = this.findPath(this.player.x, this.player.y, tx, ty, false);
+        }
+
         if (path && path.length > 1) {
             const nextStep = path[1];
             this.movePlayer(nextStep.x - this.player.x, nextStep.y - this.player.y);
+            return true;
         } else {
-            console.warn("BOT: No path found to", tx, ty);
+            // console.warn("BOT: No path found to", tx, ty);
+            return false;
         }
     }
 
-    findPath(sx, sy, tx, ty) {
+    findPath(sx, sy, tx, ty, avoidMonsters = false) {
         const queue = [[{ x: sx, y: sy }]];
         const visited = new Set([`${sx},${sy}`]);
 
@@ -1509,6 +1559,14 @@ export class Game {
             for (const n of neighbors) {
                 if (n.x < 0 || n.x >= this.map.width || n.y < 0 || n.y >= this.map.height) continue;
                 if (this.map.isWall(n.x, n.y)) continue;
+
+                // If avoiding monsters, check for monsters that aren't the target
+                if (avoidMonsters) {
+                    const entity = this.map.getEntityAt(n.x, n.y);
+                    if (entity && entity.type === 'monster' && (n.x !== tx || n.y !== ty)) {
+                        continue;
+                    }
+                }
                 if (!visited.has(`${n.x},${n.y}`)) {
                     visited.add(`${n.x},${n.y}`);
                     queue.push([...currentPath, n]);
